@@ -84,6 +84,12 @@ RadosOss::Init(XrdSysLogger *logger, const char *configFn)
 
   ret = rados_connect(mCephCluster);
 
+  if (ret == 0 && mPoolMap.count(DEFAULT_POOL_PREFIX) == 0)
+  {
+    RadosOssPool defaultPool = {getDefaultPoolName(), DEFAULT_POOL_FILE_SIZE};
+    mPoolMap[DEFAULT_POOL_PREFIX] = defaultPool;
+  }
+
   return ret;
 }
 
@@ -121,12 +127,6 @@ RadosOss::loadInfoFromConfig()
       while (pool = Config.GetWord())
         addPoolFromConfStr(pool);
     }
-  }
-
-  if (mPoolMap.count(DEFAULT_POOL_PREFIX) == 0)
-  {
-    RadosOssPool defaultPool = {getDefaultPoolName(), DEFAULT_POOL_FILE_SIZE};
-    mPoolMap[DEFAULT_POOL_PREFIX] = defaultPool;
   }
 
   Config.Close();
