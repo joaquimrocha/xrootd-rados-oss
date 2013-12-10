@@ -1,0 +1,39 @@
+XRootD Rados Open Storage System Plugin
+=======================================
+
+This project contains a plugin for the **XRootD** server which interfaces with
+**librados** for the storage of data.
+
+It is published under the GPLv3 license: http://www.gnu.org/licenses/gpl-3.0.html
+
+
+Setup
+======
+
+This plugin is loaded by the XRootD Server. In order to accomplish this, it is
+necessary to indicate the server where the plugin is by adding the following
+line to the server's configuration file:
+
+  ofs.osslib /path/to/libRadosOss.so
+
+It is necessary to tell which Ceph cluster it should interface with. This is done
+by adding the following file to the same configuration file indicated above:
+
+  radososs.config /path/to/your/ceph.conf
+
+The Rados Oss plugin maps pools with object names' prefixes. Thus, it is possible
+to configure which prefixes point to which pools by setting the *radososs.pools*
+variable in the configuration file similar to the following example:
+
+  radososs.pools /test/:mytestpool:50 /:data
+
+It is also possible to configure the maximum size allowed for the files written using
+this plugin by adding :NUMBER after the pool's name as seen in the example above. The
+size is in MB so the example above restricts files in *mytestpool* to have a maximum
+size of 50 MB.
+
+**IMPORTANT:** In order for the plugin to work correctly, it is also necessary to
+disable *send file* and *async* in XRootD. This is done by adding the following
+line to the configuration file:
+
+  xrootd.async nosf off
