@@ -51,8 +51,6 @@ RadosOssFile::Close(long long *retsz)
 {
   Fsync();
 
-  rados_ioctx_destroy(mIoctx);
-
   return XrdOssOK;
 }
 
@@ -75,14 +73,7 @@ RadosOssFile::Open(const char *path, int flags, mode_t mode, XrdOucEnv &env)
   // we convert because it will be compared in a different unit
   mPoolFileSize = pool->size * BYTE_CONVERSION;
 
-  ret = mCephOss->getIoctxFromPool(pool, &mIoctx);
-
-  if (ret != 0)
-  {
-    mEroute.Emsg("Failed to retrieve Ioctx from path", strerror(-ret), pool->name.c_str());
-    return ret;
-  }
-
+  mIoctx = pool->ioctx;
   mUid = env.GetInt("uid");
   mGid = env.GetInt("gid");
 

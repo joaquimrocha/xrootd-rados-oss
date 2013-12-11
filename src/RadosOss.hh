@@ -31,6 +31,7 @@
 typedef struct {
   std::string name;
   int size;
+  rados_ioctx_t ioctx;
 } RadosOssPool;
 
 class RadosOss : public XrdOss
@@ -63,9 +64,6 @@ public:
 
   int genericStat(rados_ioctx_t &ioctx, const char* path, struct stat* buff);
   const RadosOssPool * getPoolFromPath(const std::string &path);
-  int getIoctxFromPool(const RadosOssPool *pool,
-                       rados_ioctx_t *ioctx);
-
 
   RadosOss();
   virtual ~RadosOss();
@@ -74,6 +72,7 @@ public:
 private:
   int loadInfoFromConfig(void);
   void addPoolFromConfStr(const char *confStr);
+  void initIoctxInPools(void);
   std::string getDefaultPoolName(void) const;
   int getIoctxFromPath(const std::string &objectName, rados_ioctx_t *ioctx);
 

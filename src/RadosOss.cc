@@ -65,6 +65,12 @@ RadosOss::RadosOss()
 
 RadosOss::~RadosOss()
 {
+  std::map<std::string, RadosOssPool>::iterator it;
+  for (it = mPoolMap.begin(); it != mPoolMap.end(); it++)
+  {
+    rados_ioctx_destroy((*it).second.ioctx);
+  }
+
   rados_shutdown(mCephCluster);
 }
 
@@ -88,7 +94,13 @@ RadosOss::Init(XrdSysLogger *logger, const char *configFn)
   {
     RadosOssPool defaultPool = {getDefaultPoolName(), DEFAULT_POOL_FILE_SIZE};
     mPoolMap[DEFAULT_POOL_PREFIX] = defaultPool;
+    mPoolPrefixSet.insert(DEFAULT_POOL_PREFIX);
+
+    OssEroute.Emsg("Got default pool name since none was configured",
+                   DEFAULT_POOL_PREFIX, "=", defaultPool.name.c_str());
   }
+
+  initIoctxInPools();
 
   return ret;
 }
@@ -184,11 +196,26 @@ RadosOss::addPoolFromConfStr(const char *confStr)
   mPoolPrefixSet.insert(poolPrefix.c_str());
 }
 
-int
-RadosOss::getIoctxFromPool(const RadosOssPool *pool,
-                           rados_ioctx_t *ioctx)
+void
+RadosOss::initIoctxInPools()
 {
-  return rados_ioctx_create(mCephCluster, pool->name.c_str(), ioctx);
+  std::map<std::string, RadosOssPool>::iterator it = mPoolMap.begin();
+
+  while (it != mPoolMap.end())
+  {
+    const std::string &key = (*it).first;
+    RadosOssPool &pool = (*it).second;
+    int res = rados_ioctx_create(mCephCluster, pool.name.c_str(), &pool.ioctx);
+
+    it++;
+
+    if (res != 0)
+    {
+      OssEroute.Emsg("Problem creating pool from name",
+                     pool.name.c_str(), strerror(-res));
+      mPoolMap.erase(key);
+    }
+  }
 }
 
 int
@@ -203,7 +230,9 @@ RadosOss::getIoctxFromPath(const std::string &objectName,
     return -ENODEV;
   }
 
-  return getIoctxFromPool(pool, ioctx);
+  *ioctx = pool->ioctx;
+
+  return 0;
 }
 
 static ino_t
@@ -308,8 +337,6 @@ RadosOss::Stat(const char* path,
   if (ret != 0)
     OssEroute.Emsg("Failed to stat file", strerror(-ret));
 
-  rados_ioctx_destroy(ioctx);
-
   return ret;
 }
 
@@ -340,8 +367,6 @@ RadosOss::Unlink(const char *path, int Opts, XrdOucEnv *env)
   else
     OssEroute.Emsg("No permissions to remove", path);
 
-  rados_ioctx_destroy(ioctx);
-
   return ret;
 }
 
@@ -371,8 +396,6 @@ RadosOss::Truncate(const char* path,
     OssEroute.Emsg("Failed to stat file", path, ":", strerror(-ret));
   else if (RadosOss::hasPermission(buff, uid, gid, O_WRONLY | O_RDWR))
     ret = rados_trunc(ioctx, path, size);
-
-  rados_ioctx_destroy(ioctx);
 
   return ret;
 }
@@ -487,7 +510,6 @@ RadosOss::Create(const char *tident, const char *path, mode_t access_mode,
   }
 
  bailout:
-  rados_ioctx_destroy(ioctx);
 
   return ret;
 }
