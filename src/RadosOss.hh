@@ -43,14 +43,14 @@ public:
   virtual int     Chmod(const char *, mode_t mode, XrdOucEnv *eP=0)
                         { return -ENOTSUP; }
   virtual int     Create(const char *, const char *, mode_t, XrdOucEnv &,
-			 int opts=0);
+                         int opts=0);
   virtual int     Init(XrdSysLogger *, const char *);
   virtual int     Mkdir(const char *, mode_t mode, int mkpath=0,
-			XrdOucEnv *eP=0) { return -ENOTSUP; }
+                        XrdOucEnv *eP=0) { return -ENOTSUP; }
   virtual int     Remdir(const char *, int Opts=0, XrdOucEnv *eP=0)
                          { return -ENOTSUP; }
   virtual int     Rename(const char *, const char *,
-			 XrdOucEnv *eP1=0, XrdOucEnv *eP2=0)
+                         XrdOucEnv *eP1=0, XrdOucEnv *eP2=0)
                          { return -ENOTSUP; }
   virtual int     Stat(const char *, struct stat *, int opts=0, XrdOucEnv *eP=0);
   virtual int     StatFS(const char *path, char *buff, int &blen, XrdOucEnv *eP=0);

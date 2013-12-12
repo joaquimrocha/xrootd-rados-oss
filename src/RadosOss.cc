@@ -541,8 +541,8 @@ RadosOss::StatFS(const char *path, char *buff, int &blen, XrdOucEnv *eP)
   int valid = rados_cluster_stat(mCephCluster, &stat) == 0;
 
   blen = snprintf(buff, blen, "%d %lld %d %d %lld %d",
-		  valid, (valid ? stat.kb : 0LL), (valid ? stat.kb_used : 0),
-		  valid, (valid ? stat.kb : 0LL), (valid ? stat.kb_used : 0));
+                  valid, (valid ? stat.kb : 0LL), (valid ? stat.kb_used : 0),
+                  valid, (valid ? stat.kb : 0LL), (valid ? stat.kb_used : 0));
 
   return XrdOssOK;
 }
