@@ -70,14 +70,13 @@ public:
   XrdSysMutex mutex;
 
 private:
-  int loadInfoFromConfig(void);
+  int loadInfoFromConfig(const char *pluginConf);
   void addPoolFromConfStr(const char *confStr);
   void initIoctxInPools(void);
   std::string getDefaultPoolName(void) const;
   int getIoctxFromPath(const std::string &objectName, rados_ioctx_t *ioctx);
 
   rados_t mCephCluster;
-  const char *mConfigFN;
   std::vector<rados_completion_t> mCompletionList;
   std::map<std::string, RadosOssPool> mPoolMap;
   std::set<std::string> mPoolPrefixSet;

@@ -77,13 +77,11 @@ RadosOss::~RadosOss()
 int
 RadosOss::Init(XrdSysLogger *logger, const char *configFn)
 {
-  mConfigFN = configFn;
-
-  int ret = loadInfoFromConfig();
+  int ret = loadInfoFromConfig(configFn);
 
   if (ret != 0)
   {
-    OssEroute.Emsg("Problem when reading Ceph's config file", mConfigFN,
+    OssEroute.Emsg("Problem when reading Ceph's config file", configFn,
                    ":", strerror(-ret));
     return ret;
   }
@@ -116,13 +114,13 @@ RadosOss::getDefaultPoolName() const
 }
 
 int
-RadosOss::loadInfoFromConfig()
+RadosOss::loadInfoFromConfig(const char *pluginConf)
 {
   XrdOucStream Config;
   int cfgFD;
   char *var, *configPath = 0;
 
-  if ((cfgFD = open(mConfigFN, O_RDONLY, 0)) < 0)
+  if ((cfgFD = open(pluginConf, O_RDONLY, 0)) < 0)
     return cfgFD;
 
   Config.Attach(cfgFD);
