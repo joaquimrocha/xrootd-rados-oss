@@ -70,7 +70,9 @@ public:
   XrdSysMutex mutex;
 
 private:
-  int loadInfoFromConfig(const char *pluginConf);
+  int loadInfoFromConfig(const char *pluginConf,
+                         std::string &configPath,
+                         std::string &userName);
   void addPoolFromConfStr(const char *confStr);
   void initIoctxInPools(void);
   std::string getDefaultPoolName(void) const;

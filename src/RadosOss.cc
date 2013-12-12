@@ -57,10 +57,6 @@ extern "C"
 
 RadosOss::RadosOss()
 {
-  int err = rados_create(&mCephCluster, 0);
-
-  if (err < 0)
-    OssEroute.Emsg("Problem when creating the cluster", strerror(-err));
 }
 
 RadosOss::~RadosOss()
@@ -77,12 +73,30 @@ RadosOss::~RadosOss()
 int
 RadosOss::Init(XrdSysLogger *logger, const char *configFn)
 {
-  int ret = loadInfoFromConfig(configFn);
+  std::string userName, configPath;
+  int ret = loadInfoFromConfig(configFn, configPath, userName);
 
   if (ret != 0)
   {
-    OssEroute.Emsg("Problem when reading Ceph's config file", configFn,
-                   ":", strerror(-ret));
+    OssEroute.Emsg("Problem when reading Rados OSS plugin's config file",
+                   configFn, ":", strerror(-ret));
+    return ret;
+  }
+
+  ret = rados_create(&mCephCluster, userName.c_str());
+
+  if (ret != 0)
+  {
+    OssEroute.Emsg("Problem when creating the cluster", strerror(-ret));
+    return ret;
+  }
+
+  ret = rados_conf_read_file(mCephCluster, configPath.c_str());
+
+  if (ret != 0)
+  {
+    OssEroute.Emsg("Problem when reading Ceph's config file",
+                   configPath.c_str(), ":", strerror(-ret));
     return ret;
   }
 
@@ -114,11 +128,16 @@ RadosOss::getDefaultPoolName() const
 }
 
 int
-RadosOss::loadInfoFromConfig(const char *pluginConf)
+RadosOss::loadInfoFromConfig(const char *pluginConf,
+                             std::string &configPath,
+                             std::string &userName)
 {
   XrdOucStream Config;
   int cfgFD;
-  char *var, *configPath = 0;
+  char *var;
+
+  configPath = "";
+  userName = "";
 
   if ((cfgFD = open(pluginConf, O_RDONLY, 0)) < 0)
     return cfgFD;
@@ -126,12 +145,15 @@ RadosOss::loadInfoFromConfig(const char *pluginConf)
   Config.Attach(cfgFD);
   while ((var = Config.GetMyFirstWord()))
   {
-    if (configPath == 0 && strcmp(var, RADOS_CONFIG) == 0)
+    if (configPath == "" && strcmp(var, RADOS_CONFIG) == 0)
     {
       configPath = Config.GetWord();
     }
-
-    if (strcmp(var, RADOS_CONFIG_POOLS_KW) == 0)
+    else if (userName == "" && strcmp(var, RADOS_CONFIG_USER) == 0)
+    {
+      userName = Config.GetWord();
+    }
+    else if (strcmp(var, RADOS_CONFIG_POOLS_KW) == 0)
     {
       const char *pool;
       while (pool = Config.GetWord())
@@ -141,7 +163,7 @@ RadosOss::loadInfoFromConfig(const char *pluginConf)
 
   Config.Close();
 
-  return rados_conf_read_file(mCephCluster, configPath);
+  return 0;
 }
 
 void
