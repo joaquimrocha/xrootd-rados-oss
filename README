@@ -32,6 +32,11 @@ this plugin by adding :NUMBER after the pool's name as seen in the example above
 size is in MB so the example above restricts files in *mytestpool* to have a maximum
 size of 50 MB.
 
+If you need the Rados instance to be created with a specific user name, you can do
+it in the following way (myusername is an existing user name):
+
+  radososs.user myusername
+
 **IMPORTANT:** In order for the plugin to work correctly, it is also necessary to
 disable *send file* and *async* in XRootD. This is done by adding the following
 line to the configuration file:
