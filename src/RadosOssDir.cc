@@ -18,26 +18,63 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.*
  ************************************************************************/
 
-#ifndef __RADOS_OSS_DEFINES_HH__
-#define __RADOS_OSS_DEFINES_HH__
+#include <cephfs/libcephfs.h>
+#include <assert.h>
+#include <fcntl.h>
+#include <XrdSys/XrdSysPlatform.hh>
+#include <XrdOuc/XrdOucEnv.hh>
 
-#define RADOS_OSS_CONFIG_PREFIX "radososs"
-#define RADOS_CONFIG (RADOS_OSS_CONFIG_PREFIX ".config")
-#define RADOS_CONFIG_POOLS_KW (RADOS_OSS_CONFIG_PREFIX ".pools")
-#define RADOS_CONFIG_USER (RADOS_OSS_CONFIG_PREFIX ".user")
-#define BYTE_CONVERSION 1000000 // from MB
-#define DEFAULT_POOL_PREFIX "/"
-#define DEFAULT_POOL_FILE_SIZE 1000 // 1 GB
-#define XATTR_PERMISSIONS_LENGTH 50
-#define ROOT_UID 0
-#define XATTR_UID "uid="
-#define XATTR_GID "gid="
-#define XATTR_MODE "mode="
-#define XATTR_PERMISSIONS "permissions"
-#define DEFAULT_MODE (S_IRWXU | S_IRGRP | S_IROTH)
-#define DEFAULT_MODE_FILE (S_IFREG | DEFAULT_MODE)
-#define DEFAULT_MODE_DIR (S_IFDIR | DEFAULT_MODE)
-#define INDEX_NAME_KEY "name="
-#define PATH_SEP '/'
+#include "RadosOssDir.hh"
+#include "RadosOssDefines.hh"
 
-#endif // __RADOS_OSS_DEFINES_HH__
+RadosOssDir::RadosOssDir(RadosOss *cephOss,
+                         const XrdSysError &eroute)
+  : mCephOss(cephOss),
+    mDirInfo(0),
+    mNextEntry(0)
+{
+}
+
+RadosOssDir::~RadosOssDir()
+{
+}
+
+int
+RadosOssDir::Opendir(const char *path, XrdOucEnv &env)
+{
+  std::string dirPath(path);
+  int ret;
+
+  if (dirPath[dirPath.length() - 1] != '/')
+    dirPath += '/';
+
+  mDirInfo = mCephOss->getDirInfo(dirPath.c_str());
+  mDirInfo->update();
+
+  uid_t uid = env.GetInt("uid");
+  gid_t gid = env.GetInt("gid");
+
+  if (mDirInfo->hasPermission(uid, gid, O_RDONLY))
+    return XrdOssOK;
+
+  return -EACCES;
+}
+
+int
+RadosOssDir::Close(long long *retsz)
+{
+  return XrdOssOK;
+}
+
+int
+RadosOssDir::Readdir(char *buff, int blen)
+{
+  const std::string &entry = mDirInfo->getEntry(mNextEntry++);
+
+  if (entry != "")
+    strlcpy(buff, entry.c_str(), entry.length());
+  else
+    *buff = '\0';
+
+  return XrdOssOK;
+}

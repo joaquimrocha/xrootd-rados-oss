@@ -4,6 +4,8 @@ find_package( LibRados REQUIRED )
 add_library( RadosOss SHARED
              RadosOss.cc RadosOss.hh
              RadosOssFile.cc RadosOssFile.hh
+             DirInfo.cc DirInfo.hh
+             RadosOssDir.cc RadosOssDir.hh
              RadosOssDefines.hh
              hash64.c hash64.h
 )

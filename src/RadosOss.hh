@@ -25,8 +25,11 @@
 #include <XrdSys/XrdSysPthread.hh>
 #include <stdio.h>
 #include <vector>
+#include <string>
 #include <map>
 #include <set>
+
+#include "DirInfo.hh"
 
 typedef struct {
   std::string name;
@@ -37,7 +40,7 @@ typedef struct {
 class RadosOss : public XrdOss
 {
 public:
-  virtual XrdOssDF *newDir(const char *tident) { return 0; }
+  virtual XrdOssDF *newDir(const char *tident);
   virtual XrdOssDF *newFile(const char *tident);
 
   virtual int     Chmod(const char *, mode_t mode, XrdOucEnv *eP=0)
@@ -46,9 +49,9 @@ public:
                          int opts=0);
   virtual int     Init(XrdSysLogger *, const char *);
   virtual int     Mkdir(const char *, mode_t mode, int mkpath=0,
-                        XrdOucEnv *eP=0) { return -ENOTSUP; }
+                        XrdOucEnv *eP=0);
   virtual int     Remdir(const char *, int Opts=0, XrdOucEnv *eP=0)
-                         { return -ENOTSUP; }
+                        { return -ENOTSUP; }
   virtual int     Rename(const char *, const char *,
                          XrdOucEnv *eP1=0, XrdOucEnv *eP2=0)
                          { return -ENOTSUP; }
@@ -62,8 +65,12 @@ public:
                             const gid_t gid,
                             const int permission);
 
-  int genericStat(rados_ioctx_t &ioctx, const char* path, struct stat* buff);
+  static int genericStat(rados_ioctx_t &ioctx,
+                         const char* path,
+                         struct stat* buff);
   const RadosOssPool * getPoolFromPath(const std::string &path);
+
+  DirInfo *getDirInfo(const char *path);
 
   RadosOss();
   virtual ~RadosOss();
@@ -77,17 +84,12 @@ private:
   void initIoctxInPools(void);
   std::string getDefaultPoolName(void) const;
   int getIoctxFromPath(const std::string &objectName, rados_ioctx_t *ioctx);
-  int indexObject(rados_ioctx_t &ioctx,
-                  const std::string &obj,
-                  char op,
-                  int pos=-1);
-  const std::string getObjectDirName(const std::string &obj, int *index);
-  std::string escapeObjName(const std::string &obj);
 
   rados_t mCephCluster;
   std::vector<rados_completion_t> mCompletionList;
   std::map<std::string, RadosOssPool> mPoolMap;
   std::set<std::string> mPoolPrefixSet;
+  std::map<std::string, DirInfo> mDirCache;
 };
 
 #endif /* __RADOS_OSS_HH__ */

@@ -33,11 +33,18 @@
 #include "hash64.h"
 #include "RadosOss.hh"
 #include "RadosOssFile.hh"
+#include "RadosOssDir.hh"
 #include "RadosOssDefines.hh"
 
 extern XrdSysError OssEroute;
 
 #define LOG_PREFIX "--- Ceph Oss Rados --- "
+
+static const std::string getParentDir(const std::string &obj, int *pos);
+static std::string escapeObjName(const std::string &obj);
+static int indexObject(rados_ioctx_t &ioctx,
+                       const std::string &obj,
+                       char op);
 
 extern "C"
 {
@@ -323,6 +330,48 @@ getPermissionsXAttr(rados_ioctx_t &ioctx,
   return 0;
 }
 
+static int
+checkIfPathExists(rados_ioctx_t &ioctx,
+                  const char *path,
+                  mode_t *filetype)
+{
+  const int length = strlen(path);
+  bool isDirPath = path[length - 1] == PATH_SEP;
+
+  if (rados_stat(ioctx, path, 0, 0) == 0)
+  {
+    if (isDirPath)
+      *filetype = S_IFDIR;
+    else
+      *filetype = S_IFREG;
+    return 0;
+  }
+
+  std::string otherPath(path);
+
+  if (isDirPath)
+  {
+    // delete the last separator
+    otherPath.erase(length - 1, 1);
+  }
+  else
+  {
+    otherPath += PATH_SEP;
+  }
+
+  if (rados_stat(ioctx, otherPath.c_str(), 0, 0) == 0)
+  {
+    if (isDirPath)
+      *filetype = S_IFREG;
+    else
+      *filetype = S_IFDIR;
+
+    return 0;
+  }
+
+  return -1;
+}
+
 int
 RadosOss::genericStat(rados_ioctx_t &ioctx,
                       const char* path,
@@ -333,21 +382,42 @@ RadosOss::genericStat(rados_ioctx_t &ioctx,
   int ret;
   uid_t uid = 0;
   gid_t gid = 0;
-  mode_t permissions = DEFAULT_MODE;
+  mode_t permissions = DEFAULT_MODE_FILE;
+  bool isDir = false;
+  std::string realPath(path);
 
-  ret = rados_stat(ioctx, path, &psize, &pmtime);
-
-  if (ret != 0)
-    return ret;
-
-  ret = getPermissionsXAttr(ioctx, path, &permissions, &uid, &gid);
+  ret = rados_stat(ioctx, realPath.c_str(), &psize, &pmtime);
+  isDir = realPath[realPath.length() - 1] == PATH_SEP;
 
   if (ret != 0)
-    OssEroute.Emsg("Problem getting permissions of file.", path,
+  {
+    if (isDir)
+      return ret;
+
+    realPath += PATH_SEP;
+
+    isDir = rados_stat(ioctx, realPath.c_str(), &psize, &pmtime) == 0;
+
+    if (!isDir)
+      return -ENOENT;
+  }
+
+  if (isDir)
+  {
+    permissions = DEFAULT_MODE_DIR;
+  }
+
+  ret = getPermissionsXAttr(ioctx, realPath.c_str(), &permissions, &uid, &gid);
+
+  if (ret != 0)
+  {
+    OssEroute.Emsg("Problem getting permissions of path", realPath.c_str(),
                    strerror(-ret), "Using default permissions in stat.");
+    ret = 0;
+  }
 
   buff->st_dev = 0;
-  buff->st_ino = hash(path);
+  buff->st_ino = hash(realPath.c_str());
   buff->st_mode = permissions;
   buff->st_nlink = 1;
   buff->st_uid = uid;
@@ -416,11 +486,173 @@ RadosOss::Stat(const char* path,
   return ret;
 }
 
+static bool
+verifyIsOctal(const char *mode)
+{
+  const char *ptr = mode;
+  while (*ptr != '\0')
+  {
+    if (*ptr < '0' || *ptr > '7')
+      return false;
+    ptr++;
+  }
+
+  return true;
+}
+
+static std::string
+getDirPath(const char *path)
+{
+  std::string dir(path);
+
+  if (dir[dir.length() - 1] != PATH_SEP)
+    dir += PATH_SEP;
+
+  return dir;
+}
+
+static int
+makeDirsRecursively(rados_ioctx_t &ioctx,
+                    const char *path,
+                    uid_t uid,
+                    gid_t gid)
+{
+  int index;
+  int ret = 0;
+  mode_t fileType, mode;
+  struct stat buff;
+  const std::string dir = getDirPath(path);
+  const std::string parentDir = getParentDir(path, &index);
+
+  if (rados_stat(ioctx, dir.c_str(), 0, 0) == 0 || parentDir == "")
+    return 0;
+
+  if (checkIfPathExists(ioctx, parentDir.c_str(), &fileType) != 0)
+  {
+    fileType = S_IFDIR;
+    ret = makeDirsRecursively(ioctx, parentDir.c_str(), uid, gid);
+  }
+
+  if (ret == 0)
+  {
+    if (fileType == S_IFREG)
+      return -ENOTDIR;
+
+    ret = RadosOss::genericStat(ioctx, parentDir.c_str(), &buff);
+
+    if (ret != 0 || !RadosOss::hasPermission(buff, uid, gid, O_WRONLY | O_RDWR))
+      return -EACCES;
+
+    std::string dir = getDirPath(path);
+    ret = rados_write(ioctx, dir.c_str(), 0, 0, 0);
+
+    if (ret != 0)
+    {
+      OssEroute.Emsg("Couldn't create directory", dir.c_str(),
+                     ":", strerror(-ret));
+      return ret;
+    }
+
+    ret = setPermissionsXAttr(ioctx, dir.c_str(), buff.st_mode, uid, gid);
+
+    if (ret != 0)
+      OssEroute.Emsg("Problem setting permissions:", strerror(-ret));
+
+    indexObject(ioctx, dir.c_str(), '+');
+  }
+
+  return ret;
+}
+
+int
+RadosOss::Mkdir(const char *path, mode_t mode, int mkpath, XrdOucEnv *env)
+{
+  int ret;
+  uid_t uid = 0;
+  gid_t gid = 0;
+  uid_t owner = uid;
+  gid_t group = gid;
+  mode_t fileType;
+  rados_ioctx_t ioctx;
+  std::string dir = getDirPath(path);
+
+  ret = getIoctxFromPath(path, &ioctx);
+
+  if (ret != 0)
+  {
+    OssEroute.Emsg("Failed to get Ioctx", strerror(-ret));
+    return ret;
+  }
+
+  if (checkIfPathExists(ioctx, path, &fileType) == 0)
+    return -EEXIST;
+
+  if (dir[dir.length() - 1] != PATH_SEP)
+    dir += PATH_SEP;
+
+  if (env)
+  {
+    uid = owner = env->GetInt("uid");
+    gid = group = env->GetInt("gid");
+
+    if (uid == ROOT_UID)
+    {
+      owner = env->GetInt("owner");
+      if (owner < 0)
+        owner = uid;
+
+      group = env->GetInt("group");
+      if (group < 0)
+        group = gid;
+    }
+  }
+
+  mode_t permOctal = mode | S_IFDIR;
+  int index;
+  const std::string parentDir = getParentDir(dir, &index);
+
+  if (mkpath)
+  {
+    ret = makeDirsRecursively(ioctx, parentDir.c_str(), uid, gid);
+
+    if (ret != 0)
+      return ret;
+  }
+
+  struct stat buff;
+  ret = RadosOss::genericStat(ioctx, parentDir.c_str(), &buff);
+
+  if (ret != 0)
+    return ret;
+
+  if (!RadosOss::hasPermission(buff, uid, gid, O_WRONLY | O_RDWR))
+    return -EACCES;
+
+  ret = rados_write(ioctx, dir.c_str(), 0, 0, 0);
+
+  if (ret != 0)
+  {
+    OssEroute.Emsg("Couldn't create directory", dir.c_str(),
+                   ":", strerror(-ret));
+    return ret;
+  }
+
+  ret = setPermissionsXAttr(ioctx, dir.c_str(), permOctal, owner, group);
+
+  if (ret != 0)
+    OssEroute.Emsg("Problem setting permissions:", strerror(-ret));
+
+  indexObject(ioctx, dir.c_str(), '+');
+
+  return XrdOssOK;
+}
+
 int
 RadosOss::Unlink(const char *path, int Opts, XrdOucEnv *env)
 {
   uid_t uid;
   gid_t gid;
+  mode_t fileType;
   rados_ioctx_t ioctx;
   struct stat buff;
   int ret = getIoctxFromPath(path, &ioctx);
@@ -430,6 +662,9 @@ RadosOss::Unlink(const char *path, int Opts, XrdOucEnv *env)
     OssEroute.Emsg("Failed to get Ioctx", strerror(-ret));
     return ret;
   }
+
+  if (checkIfPathExists(ioctx, path, &fileType) == 0 && fileType == S_IFDIR)
+    return -EISDIR;
 
   uid = env->GetInt("uid");
   gid = env->GetInt("gid");
@@ -459,6 +694,7 @@ RadosOss::Truncate(const char* path,
 {
   uid_t uid;
   gid_t gid;
+  mode_t fileType;
   rados_ioctx_t ioctx;
   struct stat buff;
   int ret = getIoctxFromPath(path, &ioctx);
@@ -468,6 +704,9 @@ RadosOss::Truncate(const char* path,
     OssEroute.Emsg("Failed to get Ioctx", strerror(-ret));
     return ret;
   }
+
+  if (checkIfPathExists(ioctx, path, &fileType) == 0 && fileType == S_IFDIR)
+    return -EISDIR;
 
   uid = env->GetInt("uid");
   gid = env->GetInt("gid");
@@ -488,18 +727,10 @@ RadosOss::newFile(const char *tident)
   return dynamic_cast<XrdOssDF *>(new RadosOssFile(this, OssEroute));
 }
 
-static bool
-verifyIsOctal(const char *mode)
+XrdOssDF *
+RadosOss::newDir(const char *tident)
 {
-  const char *ptr = mode;
-  while (*ptr != '\0')
-  {
-    if (*ptr < '0' || *ptr > '7')
-      return false;
-    ptr++;
-  }
-
-  return true;
+  return dynamic_cast<XrdOssDF *>(new RadosOssDir(this, OssEroute));
 }
 
 int
@@ -509,7 +740,13 @@ RadosOss::Create(const char *tident, const char *path, mode_t access_mode,
   rados_ioctx_t ioctx;
   struct stat buff;
   ostringstream convert;
-  int ret = getIoctxFromPath(path, &ioctx);
+  int ret;
+
+  // we don't allow object names that end in a path separator
+  if (path && path[strlen(path) - 1] == PATH_SEP)
+    return -EISDIR;
+
+  ret = getIoctxFromPath(path, &ioctx);
 
   if (ret != 0)
   {
@@ -517,6 +754,14 @@ RadosOss::Create(const char *tident, const char *path, mode_t access_mode,
                    "attempting to create it", path, ":", strerror(-ret));
     return ret;
   }
+
+  std::string dirPath(path);
+  dirPath += PATH_SEP;
+
+  // we also don't allow the creation of the object is a dir
+  // with the same name exists
+  if (rados_stat(ioctx, dirPath.c_str(), 0, 0) == 0)
+    return -EISDIR;
 
   int uid = env.GetInt("uid");
   int gid = env.GetInt("gid");
@@ -556,13 +801,13 @@ RadosOss::Create(const char *tident, const char *path, mode_t access_mode,
 
   if (permissions == 0 || strcmp(permissions, "") == 0)
   {
-    permOctal = DEFAULT_MODE;
+    permOctal = DEFAULT_MODE_FILE;
   }
   else if (!verifyIsOctal(permissions))
   {
     OssEroute.Emsg("Unrecognized permissions", permissions,
                    ". Setting default ones...");
-    permOctal = DEFAULT_MODE;
+    permOctal = DEFAULT_MODE_FILE;
   }
   else
   {
@@ -606,7 +851,7 @@ RadosOss::getPoolFromPath(const std::string &path)
 }
 
 const std::string
-RadosOss::getObjectDirName(const std::string &obj, int *pos)
+getParentDir(const std::string &obj, int *pos)
 {
   int length = obj.length();
   int index = obj.rfind(PATH_SEP, length - 2);
@@ -614,13 +859,16 @@ RadosOss::getObjectDirName(const std::string &obj, int *pos)
   if (length - 1 < 1 || index == STR_NPOS)
     return "";
 
-  *pos = ++index;
+  index++;
 
-  return obj.substr(0, *pos);
+  if (pos)
+    *pos = index;
+
+  return obj.substr(0, index);
 }
 
-std::string
-RadosOss::escapeObjName(const std::string &obj)
+static std::string
+escapeObjName(const std::string &obj)
 {
   XrdOucString str(obj.c_str());
 
@@ -630,18 +878,17 @@ RadosOss::escapeObjName(const std::string &obj)
 }
 
 int
-RadosOss::indexObject(rados_ioctx_t &ioctx,
-                      const std::string &obj,
-                      char op,
-                      int pos)
+indexObject(rados_ioctx_t &ioctx,
+            const std::string &obj,
+            char op)
 {
   int index;
+  int pos;
   std::string contents;
 
-  if (pos == -1)
-    pos = obj.length() - 1;
+  pos = obj.length() - 1;
 
-  const std::string &dirName = getObjectDirName(obj, &index);
+  const std::string &dirName = getParentDir(obj, &index);
 
   if (dirName == "")
     return 0;
@@ -654,6 +901,29 @@ RadosOss::indexObject(rados_ioctx_t &ioctx,
 
   return rados_append(ioctx, dirName.c_str(),
                       contents.c_str(), strlen(contents.c_str()));
+}
+
+DirInfo *
+RadosOss::getDirInfo(const char *path)
+{
+  DirInfo *info;
+
+  if (mDirCache.count(path) == 0)
+  {
+    rados_ioctx_t ioctx;
+    int ret = getIoctxFromPath(path, &ioctx);
+
+    if (ret != 0)
+    {
+      OssEroute.Emsg("Failed to get Ioctx", strerror(-ret));
+      return 0;
+    }
+
+    DirInfo dirInfo(path, ioctx);
+    mDirCache.insert(std::pair<std::string, DirInfo>(path, dirInfo));
+  }
+
+  return &mDirCache[path];
 }
 
 XrdVERSIONINFO(XrdOssGetStorageSystem, RadosOss);

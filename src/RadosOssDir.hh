@@ -18,26 +18,31 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.*
  ************************************************************************/
 
-#ifndef __RADOS_OSS_DEFINES_HH__
-#define __RADOS_OSS_DEFINES_HH__
+#ifndef __RADOS_OSS_DIR_HH__
+#define __RADOS_OSS_DIR_HH__
 
-#define RADOS_OSS_CONFIG_PREFIX "radososs"
-#define RADOS_CONFIG (RADOS_OSS_CONFIG_PREFIX ".config")
-#define RADOS_CONFIG_POOLS_KW (RADOS_OSS_CONFIG_PREFIX ".pools")
-#define RADOS_CONFIG_USER (RADOS_OSS_CONFIG_PREFIX ".user")
-#define BYTE_CONVERSION 1000000 // from MB
-#define DEFAULT_POOL_PREFIX "/"
-#define DEFAULT_POOL_FILE_SIZE 1000 // 1 GB
-#define XATTR_PERMISSIONS_LENGTH 50
-#define ROOT_UID 0
-#define XATTR_UID "uid="
-#define XATTR_GID "gid="
-#define XATTR_MODE "mode="
-#define XATTR_PERMISSIONS "permissions"
-#define DEFAULT_MODE (S_IRWXU | S_IRGRP | S_IROTH)
-#define DEFAULT_MODE_FILE (S_IFREG | DEFAULT_MODE)
-#define DEFAULT_MODE_DIR (S_IFDIR | DEFAULT_MODE)
-#define INDEX_NAME_KEY "name="
-#define PATH_SEP '/'
+#include <xrootd/XrdOss/XrdOss.hh>
+#include <rados/librados.h>
 
-#endif // __RADOS_OSS_DEFINES_HH__
+#include "RadosOss.hh"
+#include "DirInfo.hh"
+
+class RadosOssDir : public XrdOssDF
+{
+public:
+  RadosOssDir(RadosOss *cephOss, const XrdSysError &eroute);
+  virtual ~RadosOssDir();
+  virtual int Opendir(const char *, XrdOucEnv &);
+  virtual int Readdir(char *buff, int blen);
+  virtual int Close(long long *retsz=0);
+
+private:
+  int readContents(void);
+
+  rados_ioctx_t mIoctx;
+  RadosOss *mCephOss;
+  DirInfo *mDirInfo;
+  int mNextEntry;
+};
+
+#endif /* __RADOS_OSS_DIR_HH__ */
