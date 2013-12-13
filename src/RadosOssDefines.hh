@@ -28,11 +28,12 @@
 #define BYTE_CONVERSION 1000000 // from MB
 #define DEFAULT_POOL_PREFIX "/"
 #define DEFAULT_POOL_FILE_SIZE 1000 // 1 GB
-#define XATTR_INT_LENGTH 10
+#define XATTR_PERMISSIONS_LENGTH 50
 #define ROOT_UID 0
-#define XATTR_UID "uid"
-#define XATTR_GID "gid"
-#define XATTR_MODE "permissions"
+#define XATTR_UID "uid="
+#define XATTR_GID "gid="
+#define XATTR_MODE "mode="
+#define XATTR_PERMISSIONS "permissions"
 #define DEFAULT_MODE (S_IFREG | S_IRWXU | S_IRGRP | S_IROTH)
 
 #endif // __RADOS_OSS_DEFINES_HH__

@@ -261,6 +261,68 @@ hash(const char *path)
   return hash64((ub1 *) path, strlen(path), 0);
 }
 
+static int
+setPermissionsXAttr(rados_ioctx_t &ioctx,
+                    const char *obj,
+                    long int mode,
+                    uid_t uid,
+                    gid_t gid)
+{
+  ostringstream convert;
+
+  convert << XATTR_MODE;
+  convert << oct << mode;
+
+  convert << " " << XATTR_UID;
+  convert << dec << uid;
+
+  convert << " " << XATTR_GID;
+  convert << dec << gid;
+
+  return rados_setxattr(ioctx, obj, XATTR_PERMISSIONS,
+                        convert.str().c_str(), XATTR_PERMISSIONS_LENGTH);
+}
+
+static int
+getPermissionsXAttr(rados_ioctx_t &ioctx,
+                    const char *obj,
+                    mode_t *mode,
+                    uid_t *uid,
+                    gid_t *gid)
+{
+  char permXAttr[XATTR_PERMISSIONS_LENGTH];
+
+  int ret = rados_getxattr(ioctx, obj, XATTR_PERMISSIONS,
+                           permXAttr, XATTR_PERMISSIONS_LENGTH);
+  if (ret < 0)
+    return ret;
+
+  XrdOucString token;
+  XrdOucString permissions(permXAttr);
+
+  int i = 0;
+  while ((i = permissions.tokenize(token, i, ' ')) != -1)
+  {
+    if (token.beginswith(XATTR_MODE))
+    {
+      token.erase(0, strlen(XATTR_MODE));
+      *mode = (mode_t) strtoul(token.c_str(), 0, 8);
+    }
+    else if (token.beginswith(XATTR_UID))
+    {
+      token.erase(0, strlen(XATTR_UID));
+      *uid = (uid_t) atoi(token.c_str());
+    }
+    else if (token.beginswith(XATTR_GID))
+    {
+      token.erase(0, strlen(XATTR_GID));
+      *gid = (gid_t) atoi(token.c_str());
+    }
+  }
+
+  return 0;
+}
+
 int
 RadosOss::genericStat(rados_ioctx_t &ioctx,
                       const char* path,
@@ -272,23 +334,17 @@ RadosOss::genericStat(rados_ioctx_t &ioctx,
   uid_t uid = 0;
   gid_t gid = 0;
   mode_t permissions = DEFAULT_MODE;
-  char permXAttr[XATTR_INT_LENGTH];
-  char uidXAttr[XATTR_INT_LENGTH];
-  char gidXAttr[XATTR_INT_LENGTH];
 
   ret = rados_stat(ioctx, path, &psize, &pmtime);
 
   if (ret != 0)
     return ret;
 
-  if (rados_getxattr(ioctx, path, XATTR_UID, uidXAttr, XATTR_INT_LENGTH) >= 0)
-    uid = atoi(uidXAttr);
+  ret = getPermissionsXAttr(ioctx, path, &permissions, &uid, &gid);
 
-  if (rados_getxattr(ioctx, path, XATTR_GID, gidXAttr, XATTR_INT_LENGTH) >= 0)
-    gid = atoi(gidXAttr);
-
-  if (rados_getxattr(ioctx, path, XATTR_MODE, permXAttr, XATTR_INT_LENGTH) >= 0)
-    permissions = (mode_t) strtoul(permXAttr, 0, 8);
+  if (ret != 0)
+    OssEroute.Emsg("Problem getting permissions of file.", path,
+                   strerror(-ret), "Using default permissions in stat.");
 
   buff->st_dev = 0;
   buff->st_ino = hash(path);
@@ -493,41 +549,10 @@ RadosOss::Create(const char *tident, const char *path, mode_t access_mode,
     permOctal = strtoul(permissions, 0, 8);
   }
 
-  convert << oct << permOctal;
-  ret = rados_setxattr(ioctx, path, XATTR_MODE,
-                       convert.str().c_str(), XATTR_INT_LENGTH);
+  ret = setPermissionsXAttr(ioctx, path, permOctal, uid, gid);
+
   if (ret != 0)
-  {
-    OssEroute.Emsg("Error setting 'mode' XAttr for file",
-                   path, ":", strerror(-ret));
-    goto bailout;
-  }
-
-  convert.str("");
-  convert.clear();
-  convert << dec << uid;
-
-  ret = rados_setxattr(ioctx, path, XATTR_UID,
-                       convert.str().c_str(), XATTR_INT_LENGTH);
-  if (ret != 0)
-  {
-    OssEroute.Emsg("Error setting 'uid' XAttr for file",
-                   path, ":", strerror(-ret));
-    goto bailout;
-  }
-
-  convert.str("");
-  convert.clear();
-  convert << gid;
-
-  ret = rados_setxattr(ioctx, path, XATTR_GID,
-                       convert.str().c_str(), XATTR_INT_LENGTH);
-  if (ret != 0)
-  {
-    OssEroute.Emsg("Error setting 'gid' XAttr for file",
-                   path, ":", strerror(-ret));
-    goto bailout;
-  }
+    OssEroute.Emsg("Problem setting permissions:", strerror(-ret));
 
  bailout:
 
