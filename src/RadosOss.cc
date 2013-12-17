@@ -520,13 +520,23 @@ RadosOss::Create(const char *tident, const char *path, mode_t access_mode,
   const char *permissions = env.Get("mode");
   long int permOctal;
 
-  ret = genericStat(ioctx, path, &buff);
-
-  if (ret == 0 && !hasPermission(buff, uid, gid, O_WRONLY | O_RDWR))
+  if (genericStat(ioctx, path, &buff) == 0)
   {
-    ret = -1;
-    OssEroute.Emsg("Permission denied for file", path);
-    goto bailout;
+    if (hasPermission(buff, uid, gid, O_WRONLY | O_RDWR))
+    {
+      ret = rados_remove(ioctx, path);
+      if (ret != 0)
+      {
+        OssEroute.Emsg("Problem removing file", path);
+        goto bailout;
+      }
+    }
+    else
+    {
+      ret = -EACCES;
+      OssEroute.Emsg("Permission denied for file", path);
+      goto bailout;
+    }
   }
 
   ret = rados_write(ioctx, path, 0, 0, 0);
