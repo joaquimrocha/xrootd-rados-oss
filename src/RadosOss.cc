@@ -439,7 +439,10 @@ RadosOss::Unlink(const char *path, int Opts, XrdOucEnv *env)
   if (ret != 0)
     OssEroute.Emsg("Failed to stat file", path, ":", strerror(-ret));
   else if (RadosOss::hasPermission(buff, uid, gid, O_WRONLY | O_RDWR))
+  {
     ret = rados_remove(ioctx, path);
+    indexObject(ioctx, path, '-');
+  }
   else
   {
     OssEroute.Emsg("No permissions to remove", path);
@@ -538,6 +541,10 @@ RadosOss::Create(const char *tident, const char *path, mode_t access_mode,
       goto bailout;
     }
   }
+  else
+  {
+    indexObject(ioctx, path, '+');
+  }
 
   ret = rados_write(ioctx, path, 0, 0, 0);
 
@@ -596,6 +603,57 @@ RadosOss::getPoolFromPath(const std::string &path)
   }
 
   return 0;
+}
+
+const std::string
+RadosOss::getObjectDirName(const std::string &obj, int *pos)
+{
+  int length = obj.length();
+  int index = obj.rfind(PATH_SEP, length - 2);
+
+  if (length - 1 < 1 || index == STR_NPOS)
+    return "";
+
+  *pos = ++index;
+
+  return obj.substr(0, *pos);
+}
+
+std::string
+RadosOss::escapeObjName(const std::string &obj)
+{
+  XrdOucString str(obj.c_str());
+
+  str.replace("\"", "\\\"");
+
+  return str.c_str();
+}
+
+int
+RadosOss::indexObject(rados_ioctx_t &ioctx,
+                      const std::string &obj,
+                      char op,
+                      int pos)
+{
+  int index;
+  std::string contents;
+
+  if (pos == -1)
+    pos = obj.length() - 1;
+
+  const std::string &dirName = getObjectDirName(obj, &index);
+
+  if (dirName == "")
+    return 0;
+
+  const std::string &baseName = obj.substr(index, STR_NPOS);
+
+  contents += op;
+  contents += INDEX_NAME_KEY "\"" + escapeObjName(baseName) + "\" ";
+  contents += "\n";
+
+  return rados_append(ioctx, dirName.c_str(),
+                      contents.c_str(), strlen(contents.c_str()));
 }
 
 XrdVERSIONINFO(XrdOssGetStorageSystem, RadosOss);

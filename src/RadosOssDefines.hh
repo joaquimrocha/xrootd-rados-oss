@@ -35,5 +35,7 @@
 #define XATTR_MODE "mode="
 #define XATTR_PERMISSIONS "permissions"
 #define DEFAULT_MODE (S_IFREG | S_IRWXU | S_IRGRP | S_IROTH)
+#define INDEX_NAME_KEY "name="
+#define PATH_SEP '/'
 
 #endif // __RADOS_OSS_DEFINES_HH__
