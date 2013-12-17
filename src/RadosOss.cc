@@ -441,7 +441,10 @@ RadosOss::Unlink(const char *path, int Opts, XrdOucEnv *env)
   else if (RadosOss::hasPermission(buff, uid, gid, O_WRONLY | O_RDWR))
     ret = rados_remove(ioctx, path);
   else
+  {
     OssEroute.Emsg("No permissions to remove", path);
+    ret = -EACCES;
+  }
 
   return ret;
 }
