@@ -40,6 +40,10 @@ extern XrdSysError OssEroute;
 
 #define LOG_PREFIX "--- Ceph Oss Rados --- "
 
+static int indexObject(rados_ioctx_t &ioctx,
+                       const std::string &obj,
+                       char op);
+
 extern "C"
 {
   XrdOss*
@@ -631,17 +635,12 @@ escapeObjName(const std::string &obj)
 }
 
 int
-RadosOss::indexObject(rados_ioctx_t &ioctx,
-                      const std::string &obj,
-                      char op,
-                      int pos)
+indexObject(rados_ioctx_t &ioctx,
+            const std::string &obj,
+            char op)
 {
   int index;
   std::string contents;
-
-  if (pos == -1)
-    pos = obj.length() - 1;
-
   const std::string &dirName = getParentDir(obj, &index);
 
   if (dirName == "")

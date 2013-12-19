@@ -77,10 +77,6 @@ private:
   void initIoctxInPools(void);
   std::string getDefaultPoolName(void) const;
   int getIoctxFromPath(const std::string &objectName, rados_ioctx_t *ioctx);
-  int indexObject(rados_ioctx_t &ioctx,
-                  const std::string &obj,
-                  char op,
-                  int pos=-1);
 
   rados_t mCephCluster;
   std::vector<rados_completion_t> mCompletionList;
