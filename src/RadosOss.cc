@@ -659,4 +659,27 @@ indexObject(rados_ioctx_t &ioctx,
                       contents.c_str(), strlen(contents.c_str()));
 }
 
+DirInfo *
+RadosOss::getDirInfo(const char *path)
+{
+  DirInfo *info;
+
+  if (mDirCache.count(path) == 0)
+  {
+    rados_ioctx_t ioctx;
+    int ret = getIoctxFromPath(path, &ioctx);
+
+    if (ret != 0)
+    {
+      OssEroute.Emsg("Failed to get Ioctx", strerror(-ret));
+      return 0;
+    }
+
+    DirInfo dirInfo(path, ioctx);
+    mDirCache.insert(std::pair<std::string, DirInfo>(path, dirInfo));
+  }
+
+  return &mDirCache[path];
+}
+
 XrdVERSIONINFO(XrdOssGetStorageSystem, RadosOss);

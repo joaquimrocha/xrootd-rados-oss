@@ -25,8 +25,11 @@
 #include <XrdSys/XrdSysPthread.hh>
 #include <stdio.h>
 #include <vector>
+#include <string>
 #include <map>
 #include <set>
+
+#include "DirInfo.hh"
 
 typedef struct {
   std::string name;
@@ -65,6 +68,8 @@ public:
   int genericStat(rados_ioctx_t &ioctx, const char* path, struct stat* buff);
   const RadosOssPool * getPoolFromPath(const std::string &path);
 
+  DirInfo *getDirInfo(const char *path);
+
   RadosOss();
   virtual ~RadosOss();
   XrdSysMutex mutex;
@@ -82,6 +87,7 @@ private:
   std::vector<rados_completion_t> mCompletionList;
   std::map<std::string, RadosOssPool> mPoolMap;
   std::set<std::string> mPoolPrefixSet;
+  std::map<std::string, DirInfo> mDirCache;
 };
 
 #endif /* __RADOS_OSS_HH__ */
