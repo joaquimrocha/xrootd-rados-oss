@@ -635,6 +635,7 @@ RadosOss::Unlink(const char *path, int Opts, XrdOucEnv *env)
 {
   uid_t uid;
   gid_t gid;
+  mode_t fileType;
   rados_ioctx_t ioctx;
   struct stat buff;
   int ret = getIoctxFromPath(path, &ioctx);
@@ -644,6 +645,9 @@ RadosOss::Unlink(const char *path, int Opts, XrdOucEnv *env)
     OssEroute.Emsg("Failed to get Ioctx", strerror(-ret));
     return ret;
   }
+
+  if (checkIfPathExists(ioctx, path, &fileType) == 0 && fileType == S_IFDIR)
+    return -EISDIR;
 
   uid = env->GetInt("uid");
   gid = env->GetInt("gid");
@@ -673,6 +677,7 @@ RadosOss::Truncate(const char* path,
 {
   uid_t uid;
   gid_t gid;
+  mode_t fileType;
   rados_ioctx_t ioctx;
   struct stat buff;
   int ret = getIoctxFromPath(path, &ioctx);
@@ -682,6 +687,9 @@ RadosOss::Truncate(const char* path,
     OssEroute.Emsg("Failed to get Ioctx", strerror(-ret));
     return ret;
   }
+
+  if (checkIfPathExists(ioctx, path, &fileType) == 0 && fileType == S_IFDIR)
+    return -EISDIR;
 
   uid = env->GetInt("uid");
   gid = env->GetInt("gid");
@@ -729,7 +737,13 @@ RadosOss::Create(const char *tident, const char *path, mode_t access_mode,
   rados_ioctx_t ioctx;
   struct stat buff;
   ostringstream convert;
-  int ret = getIoctxFromPath(path, &ioctx);
+  int ret;
+
+  // we don't allow object names that end in a path separator
+  if (path && path[strlen(path) - 1] == PATH_SEP)
+    return -EISDIR;
+
+  ret = getIoctxFromPath(path, &ioctx);
 
   if (ret != 0)
   {
@@ -737,6 +751,13 @@ RadosOss::Create(const char *tident, const char *path, mode_t access_mode,
                    "attempting to create it", path, ":", strerror(-ret));
     return ret;
   }
+
+  std::string dirPath = getDirPath(path);
+
+  // we also don't allow the creation of the object is a dir
+  // with the same name exists
+  if (rados_stat(ioctx, dirPath.c_str(), 0, 0) == 0)
+    return -EISDIR;
 
   int uid = env.GetInt("uid");
   int gid = env.GetInt("gid");
