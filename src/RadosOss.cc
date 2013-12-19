@@ -338,21 +338,40 @@ RadosOss::genericStat(rados_ioctx_t &ioctx,
   int ret;
   uid_t uid = 0;
   gid_t gid = 0;
-  mode_t permissions = DEFAULT_MODE;
+  mode_t permissions = DEFAULT_MODE_FILE;
+  bool isDir = false;
+  std::string realPath(path);
 
-  ret = rados_stat(ioctx, path, &psize, &pmtime);
-
-  if (ret != 0)
-    return ret;
-
-  ret = getPermissionsXAttr(ioctx, path, &permissions, &uid, &gid);
+  ret = rados_stat(ioctx, realPath.c_str(), &psize, &pmtime);
+  isDir = realPath[realPath.length() - 1] == PATH_SEP;
 
   if (ret != 0)
-    OssEroute.Emsg("Problem getting permissions of file.", path,
+  {
+    if (isDir)
+      return ret;
+
+    realPath += PATH_SEP;
+
+    isDir = rados_stat(ioctx, realPath.c_str(), &psize, &pmtime) == 0;
+
+    if (!isDir)
+      return -ENOENT;
+  }
+
+  if (isDir)
+    permissions = DEFAULT_MODE_DIR;
+
+  ret = getPermissionsXAttr(ioctx, realPath.c_str(), &permissions, &uid, &gid);
+
+  if (ret != 0)
+  {
+    OssEroute.Emsg("Problem getting permissions of path", realPath.c_str(),
                    strerror(-ret), "Using default permissions in stat.");
+    ret = 0;
+  }
 
   buff->st_dev = 0;
-  buff->st_ino = hash(path);
+  buff->st_ino = hash(realPath.c_str());
   buff->st_mode = permissions;
   buff->st_nlink = 1;
   buff->st_uid = uid;

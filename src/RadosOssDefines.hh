@@ -34,7 +34,9 @@
 #define XATTR_GID "gid="
 #define XATTR_MODE "mode="
 #define XATTR_PERMISSIONS "permissions"
-#define DEFAULT_MODE (S_IFREG | S_IRWXU | S_IRGRP | S_IROTH)
+#define DEFAULT_MODE (S_IRWXU | S_IRGRP | S_IROTH)
+#define DEFAULT_MODE_FILE (S_IFREG | DEFAULT_MODE)
+#define DEFAULT_MODE_DIR (S_IFDIR | DEFAULT_MODE)
 #define INDEX_NAME_KEY "name="
 #define PATH_SEP '/'
 
