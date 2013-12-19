@@ -40,6 +40,7 @@ extern XrdSysError OssEroute;
 
 #define LOG_PREFIX "--- Ceph Oss Rados --- "
 
+static const std::string getParentDir(const std::string &obj, int *pos);
 static int indexObject(rados_ioctx_t &ioctx,
                        const std::string &obj,
                        char op);
@@ -480,6 +481,89 @@ RadosOss::Stat(const char* path,
     OssEroute.Emsg("Failed to stat file", strerror(-ret));
 
   return ret;
+}
+
+static std::string
+getDirPath(const char *path)
+{
+  std::string dir(path);
+
+  if (dir[dir.length() - 1] != PATH_SEP)
+    dir += PATH_SEP;
+
+  return dir;
+}
+
+int
+RadosOss::Mkdir(const char *path, mode_t mode, int mkpath, XrdOucEnv *env)
+{
+  int ret;
+  uid_t uid = 0;
+  gid_t gid = 0;
+  uid_t owner = uid;
+  gid_t group = gid;
+  mode_t fileType;
+  rados_ioctx_t ioctx;
+  std::string dir = getDirPath(path);
+
+  ret = getIoctxFromPath(path, &ioctx);
+
+  if (ret != 0)
+  {
+    OssEroute.Emsg("Failed to get Ioctx", strerror(-ret));
+    return ret;
+  }
+
+  if (checkIfPathExists(ioctx, path, &fileType) == 0)
+    return -EEXIST;
+
+  if (env)
+  {
+    uid = owner = env->GetInt("uid");
+    gid = group = env->GetInt("gid");
+
+    if (uid == ROOT_UID)
+    {
+      owner = env->GetInt("owner");
+      if (owner < 0)
+        owner = uid;
+
+      group = env->GetInt("group");
+      if (group < 0)
+        group = gid;
+    }
+  }
+
+  mode_t permOctal = mode | S_IFDIR;
+  int index;
+  const std::string parentDir = getParentDir(dir, &index);
+
+  struct stat buff;
+  ret = RadosOss::genericStat(ioctx, parentDir.c_str(), &buff);
+
+  if (ret != 0)
+    return ret;
+
+  if (!RadosOss::hasPermission(buff, uid, gid, O_WRONLY | O_RDWR))
+    return -EACCES;
+
+  ret = rados_write(ioctx, dir.c_str(), 0, 0, 0);
+
+  if (ret != 0)
+  {
+    OssEroute.Emsg("Couldn't create directory", dir.c_str(),
+                   ":", strerror(-ret));
+    return ret;
+  }
+
+  ret = setPermissionsXAttr(ioctx, dir.c_str(), permOctal, owner, group);
+
+  if (ret != 0)
+    OssEroute.Emsg("Problem setting permissions:", strerror(-ret));
+
+  indexObject(ioctx, dir.c_str(), '+');
+
+  return XrdOssOK;
 }
 
 int
