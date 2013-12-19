@@ -620,8 +620,8 @@ getParentDir(const std::string &obj, int *pos)
   return obj.substr(0, *pos);
 }
 
-std::string
-RadosOss::escapeObjName(const std::string &obj)
+static std::string
+escapeObjName(const std::string &obj)
 {
   XrdOucString str(obj.c_str());
 

@@ -81,7 +81,6 @@ private:
                   const std::string &obj,
                   char op,
                   int pos=-1);
-  std::string escapeObjName(const std::string &obj);
 
   rados_t mCephCluster;
   std::vector<rados_completion_t> mCompletionList;
