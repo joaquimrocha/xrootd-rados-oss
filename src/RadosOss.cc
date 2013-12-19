@@ -794,8 +794,6 @@ RadosOss::Create(const char *tident, const char *path, mode_t access_mode,
                  XrdOucEnv &env, int Opts)
 {
   rados_ioctx_t ioctx;
-  struct stat buff;
-  ostringstream convert;
   int ret;
 
   // we don't allow object names that end in a path separator
@@ -811,39 +809,58 @@ RadosOss::Create(const char *tident, const char *path, mode_t access_mode,
     return ret;
   }
 
-  std::string dirPath = getDirPath(path);
+  const std::string &parentDir = getParentDir(path, 0);
 
-  // we also don't allow the creation of the object is a dir
-  // with the same name exists
-  if (rados_stat(ioctx, dirPath.c_str(), 0, 0) == 0)
-    return -EISDIR;
+  struct stat buff;
+  ret = genericStat(ioctx, parentDir.c_str(), &buff);
 
-  int uid = env.GetInt("uid");
-  int gid = env.GetInt("gid");
-  const char *permissions = env.Get("mode");
-  long int permOctal;
+  if (ret != 0)
+    return ret;
 
-  if (genericStat(ioctx, path, &buff) == 0)
+  uid_t uid = env.GetInt("uid");
+  gid_t gid = env.GetInt("gid");
+
+  if (!hasPermission(buff, uid, gid, O_WRONLY | O_RDWR))
   {
-    if (!hasPermission(buff, uid, gid, O_WRONLY | O_RDWR))
-    {
-      ret = -EACCES;
-      OssEroute.Emsg("Permission denied for file", path);
-      goto bailout;
-    }
+    ret = -EACCES;
+    OssEroute.Emsg("Cannot create file, permission denied", path);
+    return ret;
   }
-  else
+
+  mode_t fileType;
+  const std::string &dirPath = getDirPath(path);
+  bool fileExists = checkIfPathExists(ioctx, path, &fileType) == 0;
+
+  if (fileExists)
   {
-    indexObject(ioctx, path, '+');
+    // we also don't allow the creation of the object is a dir
+    // with the same name exists
+    if (fileExists == S_IFDIR)
+      return -EISDIR;
+
+    if (genericStat(ioctx, path, &buff) == 0)
+    {
+      if (!hasPermission(buff, uid, gid, O_WRONLY | O_RDWR))
+      {
+        OssEroute.Emsg("Permission denied for file", path);
+        return -EACCES;
+      }
+    }
   }
 
   ret = rados_write(ioctx, path, 0, 0, 0);
 
+  if (!fileExists)
+    indexObject(ioctx, path, '+');
+
   if (ret != 0)
   {
     OssEroute.Emsg("Couldn't write file for creation", path, ":", strerror(-ret));
-    goto bailout;
+    return ret;
   }
+
+  const char *permissions = env.Get("mode");
+  long int permOctal;
 
   if (permissions == 0 || strcmp(permissions, "") == 0)
   {
@@ -864,8 +881,6 @@ RadosOss::Create(const char *tident, const char *path, mode_t access_mode,
 
   if (ret != 0)
     OssEroute.Emsg("Problem setting permissions:", strerror(-ret));
-
- bailout:
 
   return ret;
 }
