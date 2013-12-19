@@ -65,7 +65,9 @@ public:
                             const gid_t gid,
                             const int permission);
 
-  int genericStat(rados_ioctx_t &ioctx, const char* path, struct stat* buff);
+  static int genericStat(rados_ioctx_t &ioctx,
+                         const char* path,
+                         struct stat* buff);
   const RadosOssPool * getPoolFromPath(const std::string &path);
 
   DirInfo *getDirInfo(const char *path);
