@@ -631,6 +631,63 @@ RadosOss::Mkdir(const char *path, mode_t mode, int mkpath, XrdOucEnv *env)
 }
 
 int
+RadosOss::Remdir(const char *path, int Opts, XrdOucEnv *env)
+{
+  int ret;
+  mode_t fileType;
+  uid_t uid;
+  gid_t gid;
+  struct stat buff;
+  rados_ioctx_t ioctx;
+  const std::string &dirPath = getDirPath(path);
+  const std::string &parentDir = getParentDir(path, 0);
+
+  ret = getIoctxFromPath(path, &ioctx);
+
+  if (ret != 0)
+  {
+    OssEroute.Emsg("Failed to get Ioctx", strerror(-ret));
+    return ret;
+  }
+
+  ret = genericStat(ioctx, parentDir.c_str(), &buff);
+
+  if (ret != 0)
+    return -ENOENT;
+
+  uid = env->GetInt("uid");
+  gid = env->GetInt("gid");
+
+  if (!RadosOss::hasPermission(buff, uid, gid, O_WRONLY | O_RDWR))
+    return -EACCES;
+
+  if (checkIfPathExists(ioctx, path, &fileType) != 0)
+    return -ENOENT;
+
+  if (fileType == S_IFREG)
+    return -ENOTDIR;
+
+  DirInfo *info = getDirInfo(dirPath.c_str());
+
+  info->update();
+
+  if (info->getEntry(0) != "")
+  {
+    OssEroute.Emsg("Problem removing directory", "it is not empty");
+    return -ENOTEMPTY;
+  }
+
+  ret = rados_remove(ioctx, dirPath.c_str());
+
+  if (ret != 0)
+    OssEroute.Emsg("Problem removing directory", strerror(-ret));
+  else
+    indexObject(ioctx, dirPath.c_str(), '-');
+
+  return ret;
+}
+
+int
 RadosOss::Unlink(const char *path, int Opts, XrdOucEnv *env)
 {
   uid_t uid;

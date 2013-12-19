@@ -50,8 +50,7 @@ public:
   virtual int     Init(XrdSysLogger *, const char *);
   virtual int     Mkdir(const char *, mode_t mode, int mkpath=0,
                         XrdOucEnv *eP=0);
-  virtual int     Remdir(const char *, int Opts=0, XrdOucEnv *eP=0)
-                         { return -ENOTSUP; }
+  virtual int     Remdir(const char *, int Opts=0, XrdOucEnv *eP=0);
   virtual int     Rename(const char *, const char *,
                          XrdOucEnv *eP1=0, XrdOucEnv *eP2=0)
                          { return -ENOTSUP; }
