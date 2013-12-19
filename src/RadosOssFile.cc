@@ -30,8 +30,6 @@
 #include "RadosOssFile.hh"
 #include "RadosOssDefines.hh"
 
-#define CEPH_ENV_PREFIX  "ceph."
-
 RadosOssFile::RadosOssFile(RadosOss *cephOss, const XrdSysError &eroute)
   : mCephOss(cephOss),
     mObjectName(0),

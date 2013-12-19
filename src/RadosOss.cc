@@ -655,7 +655,9 @@ RadosOss::Unlink(const char *path, int Opts, XrdOucEnv *env)
   ret = genericStat(ioctx, path, &buff);
 
   if (ret != 0)
+  {
     OssEroute.Emsg("Failed to stat file", path, ":", strerror(-ret));
+  }
   else if (RadosOss::hasPermission(buff, uid, gid, O_WRONLY | O_RDWR))
   {
     ret = rados_remove(ioctx, path);
