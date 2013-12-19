@@ -40,7 +40,7 @@ typedef struct {
 class RadosOss : public XrdOss
 {
 public:
-  virtual XrdOssDF *newDir(const char *tident) { return 0; }
+  virtual XrdOssDF *newDir(const char *tident);
   virtual XrdOssDF *newFile(const char *tident);
 
   virtual int     Chmod(const char *, mode_t mode, XrdOucEnv *eP=0)

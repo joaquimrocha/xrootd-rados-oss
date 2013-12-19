@@ -493,6 +493,12 @@ RadosOss::newFile(const char *tident)
   return dynamic_cast<XrdOssDF *>(new RadosOssFile(this, OssEroute));
 }
 
+XrdOssDF *
+RadosOss::newDir(const char *tident)
+{
+  return dynamic_cast<XrdOssDF *>(new RadosOssDir(this, OssEroute));
+}
+
 static bool
 verifyIsOctal(const char *mode)
 {
