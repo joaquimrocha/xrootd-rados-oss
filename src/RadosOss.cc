@@ -586,13 +586,13 @@ RadosOss::Create(const char *tident, const char *path, mode_t access_mode,
 
   if (permissions == 0 || strcmp(permissions, "") == 0)
   {
-    permOctal = DEFAULT_MODE;
+    permOctal = DEFAULT_MODE_FILE;
   }
   else if (!verifyIsOctal(permissions))
   {
     OssEroute.Emsg("Unrecognized permissions", permissions,
                    ". Setting default ones...");
-    permOctal = DEFAULT_MODE;
+    permOctal = DEFAULT_MODE_FILE;
   }
   else
   {
