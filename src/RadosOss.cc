@@ -825,16 +825,7 @@ RadosOss::Create(const char *tident, const char *path, mode_t access_mode,
 
   if (genericStat(ioctx, path, &buff) == 0)
   {
-    if (hasPermission(buff, uid, gid, O_WRONLY | O_RDWR))
-    {
-      ret = rados_remove(ioctx, path);
-      if (ret != 0)
-      {
-        OssEroute.Emsg("Problem removing file", path);
-        goto bailout;
-      }
-    }
-    else
+    if (!hasPermission(buff, uid, gid, O_WRONLY | O_RDWR))
     {
       ret = -EACCES;
       OssEroute.Emsg("Permission denied for file", path);

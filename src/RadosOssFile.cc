@@ -91,12 +91,21 @@ RadosOssFile::Open(const char *path, int flags, mode_t mode, XrdOucEnv &env)
     return -EEXIST;
   }
 
-  if (RadosOss::hasPermission(buff, mUid, mGid, flags))
-    return ret;
+  if (!RadosOss::hasPermission(buff, mUid, mGid, flags))
+  {
+    mEroute.Emsg("No permissions to open file", path);
+    return -EACCES;
+  }
 
-  mEroute.Emsg("No permissions to open file", path);
+  if (flags & O_TRUNC)
+  {
+    ret = rados_trunc(mIoctx, path, 0);
 
-  return -EACCES;
+    if (ret != 0)
+      mEroute.Emsg("Error truncating file", strerror(-ret));
+  }
+
+  return ret;
 }
 
 ssize_t
