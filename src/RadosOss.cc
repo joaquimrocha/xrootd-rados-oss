@@ -494,6 +494,62 @@ getDirPath(const char *path)
   return dir;
 }
 
+static int
+makeDirsRecursively(rados_ioctx_t &ioctx,
+                    const char *path,
+                    uid_t uid,
+                    gid_t gid)
+{
+  int index;
+  int ret = 0;
+  mode_t fileType, mode;
+  struct stat buff;
+  const std::string dir = getDirPath(path);
+  const std::string parentDir = getParentDir(path, &index);
+
+  if (rados_stat(ioctx, dir.c_str(), 0, 0) == 0 || parentDir == "")
+    return 0;
+
+  if (checkIfPathExists(ioctx, parentDir.c_str(), &fileType) != 0)
+  {
+    fileType = S_IFDIR;
+    ret = makeDirsRecursively(ioctx, parentDir.c_str(), uid, gid);
+  }
+
+  if (ret == 0)
+  {
+    if (fileType == S_IFREG)
+      return -ENOTDIR;
+
+    ret = RadosOss::genericStat(ioctx, parentDir.c_str(), &buff);
+
+    if (ret != 0)
+      return ret;
+
+    if (!RadosOss::hasPermission(buff, uid, gid, O_WRONLY | O_RDWR))
+      return -EACCES;
+
+    std::string dir = getDirPath(path);
+    ret = rados_write(ioctx, dir.c_str(), 0, 0, 0);
+
+    if (ret != 0)
+    {
+      OssEroute.Emsg("Couldn't create directory", dir.c_str(),
+                     ":", strerror(-ret));
+      return ret;
+    }
+
+    ret = setPermissionsXAttr(ioctx, dir.c_str(), buff.st_mode, uid, gid);
+
+    if (ret != 0)
+      OssEroute.Emsg("Problem setting permissions:", strerror(-ret));
+
+    indexObject(ioctx, dir.c_str(), '+');
+  }
+
+  return ret;
+}
+
 int
 RadosOss::Mkdir(const char *path, mode_t mode, int mkpath, XrdOucEnv *env)
 {
@@ -537,6 +593,14 @@ RadosOss::Mkdir(const char *path, mode_t mode, int mkpath, XrdOucEnv *env)
   mode_t permOctal = mode | S_IFDIR;
   int index;
   const std::string parentDir = getParentDir(dir, &index);
+
+  if (mkpath)
+  {
+    ret = makeDirsRecursively(ioctx, parentDir.c_str(), uid, gid);
+
+    if (ret != 0)
+      return ret;
+  }
 
   struct stat buff;
   ret = RadosOss::genericStat(ioctx, parentDir.c_str(), &buff);
