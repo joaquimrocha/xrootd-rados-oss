@@ -619,9 +619,12 @@ getParentDir(const std::string &obj, int *pos)
   if (length - 1 < 1 || index == STR_NPOS)
     return "";
 
-  *pos = ++index;
+  index++;
 
-  return obj.substr(0, *pos);
+  if (pos)
+    *pos = index;
+
+  return obj.substr(0, index);
 }
 
 static std::string
