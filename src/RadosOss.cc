@@ -33,6 +33,7 @@
 #include "hash64.h"
 #include "RadosOss.hh"
 #include "RadosOssFile.hh"
+#include "RadosOssDir.hh"
 #include "RadosOssDefines.hh"
 
 extern XrdSysError OssEroute;
@@ -606,7 +607,7 @@ RadosOss::getPoolFromPath(const std::string &path)
 }
 
 const std::string
-RadosOss::getObjectDirName(const std::string &obj, int *pos)
+getParentDir(const std::string &obj, int *pos)
 {
   int length = obj.length();
   int index = obj.rfind(PATH_SEP, length - 2);
@@ -641,7 +642,7 @@ RadosOss::indexObject(rados_ioctx_t &ioctx,
   if (pos == -1)
     pos = obj.length() - 1;
 
-  const std::string &dirName = getObjectDirName(obj, &index);
+  const std::string &dirName = getParentDir(obj, &index);
 
   if (dirName == "")
     return 0;

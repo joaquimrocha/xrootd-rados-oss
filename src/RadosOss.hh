@@ -81,7 +81,6 @@ private:
                   const std::string &obj,
                   char op,
                   int pos=-1);
-  const std::string getObjectDirName(const std::string &obj, int *index);
   std::string escapeObjName(const std::string &obj);
 
   rados_t mCephCluster;
