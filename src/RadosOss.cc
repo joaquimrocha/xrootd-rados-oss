@@ -809,16 +809,27 @@ RadosOss::Create(const char *tident, const char *path, mode_t access_mode,
     return ret;
   }
 
+  uid_t uid = env.GetInt("uid");
+  gid_t gid = env.GetInt("gid");
+
   const std::string &parentDir = getParentDir(path, 0);
 
   struct stat buff;
   ret = genericStat(ioctx, parentDir.c_str(), &buff);
 
   if (ret != 0)
-    return ret;
-
-  uid_t uid = env.GetInt("uid");
-  gid_t gid = env.GetInt("gid");
+  {
+    if (Opts & XRDOSS_mkpath)
+    {
+      ret = makeDirsRecursively(ioctx, parentDir.c_str(), uid, gid);
+      if (ret != 0)
+        return ret;
+    }
+    else
+    {
+      return ret;
+    }
+  }
 
   if (!hasPermission(buff, uid, gid, O_WRONLY | O_RDWR))
   {
