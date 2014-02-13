@@ -29,12 +29,11 @@
 #include <map>
 #include <set>
 
-#include "DirInfo.hh"
+#include <libradosfs.hh>
 
 typedef struct {
   std::string name;
   int size;
-  rados_ioctx_t ioctx;
 } RadosOssPool;
 
 class RadosOss : public XrdOss
@@ -59,17 +58,7 @@ public:
   virtual int     Truncate(const char *, unsigned long long, XrdOucEnv *eP=0);
   virtual int     Unlink(const char *path, int Opts=0, XrdOucEnv *eP=0);
 
-  static bool hasPermission(const struct stat &buff,
-                            const uid_t uid,
-                            const gid_t gid,
-                            const int permission);
-
-  static int genericStat(rados_ioctx_t &ioctx,
-                         const char* path,
-                         struct stat* buff);
   const RadosOssPool * getPoolFromPath(const std::string &path);
-
-  DirInfo *getDirInfo(const char *path);
 
   RadosOss();
   virtual ~RadosOss();
@@ -82,13 +71,12 @@ private:
   void addPoolFromConfStr(const char *confStr);
   void initIoctxInPools(void);
   std::string getDefaultPoolName(void) const;
-  int getIoctxFromPath(const std::string &objectName, rados_ioctx_t *ioctx);
+  void setIdsFromEnv(XrdOucEnv *env);
 
-  rados_t mCephCluster;
-  std::vector<rados_completion_t> mCompletionList;
+  radosfs::RadosFs mRadosFs;
+
   std::map<std::string, RadosOssPool> mPoolMap;
   std::set<std::string> mPoolPrefixSet;
-  std::map<std::string, DirInfo> mDirCache;
 };
 
 #endif /* __RADOS_OSS_HH__ */

@@ -5,10 +5,8 @@ find_package( LibRadosFs REQUIRED )
 add_library( RadosOss SHARED
              RadosOss.cc RadosOss.hh
              RadosOssFile.cc RadosOssFile.hh
-             DirInfo.cc DirInfo.hh
              RadosOssDir.cc RadosOssDir.hh
              RadosOssDefines.hh
-             hash64.c hash64.h
 )
 
 include_directories( ${XROOTD_INCLUDE_DIR} ${RADOS_INCLUDE_DIR} )

@@ -22,16 +22,16 @@
 #define __RADOS_OSS_FILE_HH__
 
 #include <xrootd/XrdOss/XrdOss.hh>
-#include <XrdSys/XrdSysError.hh>
-#include <rados/librados.h>
 #include <vector>
+#include <radosfs/RadosFs.hh>
+#include <radosfs/RadosFsFile.hh>
 
 #include "RadosOss.hh"
 
 class RadosOssFile : public XrdOssDF
 {
 public:
-  RadosOssFile(RadosOss *mCephOss, const XrdSysError &eroute);
+  RadosOssFile(radosfs::RadosFs *radosFs, const XrdSysError &eroute);
   virtual ~RadosOssFile();
   virtual int Open(const char *path, int flags, mode_t mode, XrdOucEnv &env);
   virtual int Close(long long *retsz=0);
@@ -39,15 +39,11 @@ public:
   virtual ssize_t Read(void *buff, off_t offset, size_t blen);
   virtual int Fstat(struct stat *buff);
   virtual ssize_t Write(const void *buff, off_t offset, size_t blen);
-  virtual int Fsync(void);
   virtual int getFD() { return fd; }
 
 private:
-  RadosOss *mCephOss;
-  rados_ioctx_t mIoctx;
-  int mPoolFileSize;
-  std::vector<rados_completion_t> mCompletionList;
-  //  std::map<size_t, rados_completion_t> mCompletionList;
+  radosfs::RadosFs *mRadosFs;
+  radosfs::RadosFsFile *mFile;
   char* mObjectName;
   XrdSysMutex mMutex;
   XrdSysError mEroute;

@@ -19,6 +19,7 @@
  ************************************************************************/
 
 #include <cephfs/libcephfs.h>
+#include <cstdio>
 #include <assert.h>
 #include <fcntl.h>
 #include <XrdSys/XrdSysPlatform.hh>
@@ -27,37 +28,38 @@
 #include "RadosOssDir.hh"
 #include "RadosOssDefines.hh"
 
-RadosOssDir::RadosOssDir(RadosOss *cephOss,
+RadosOssDir::RadosOssDir(radosfs::RadosFs *radosFs,
                          const XrdSysError &eroute)
-  : mCephOss(cephOss),
-    mDirInfo(0),
+  : mRadosFs(radosFs),
+    mDir(0),
     mNextEntry(0)
 {
 }
 
 RadosOssDir::~RadosOssDir()
 {
+  delete mDir;
 }
 
 int
 RadosOssDir::Opendir(const char *path, XrdOucEnv &env)
 {
-  std::string dirPath(path);
-  int ret;
-
-  if (dirPath[dirPath.length() - 1] != '/')
-    dirPath += '/';
-
-  mDirInfo = mCephOss->getDirInfo(dirPath.c_str());
-  mDirInfo->update();
-
   uid_t uid = env.GetInt("uid");
   gid_t gid = env.GetInt("gid");
 
-  if (mDirInfo->hasPermission(uid, gid, O_RDONLY))
-    return XrdOssOK;
+  mRadosFs->setIds(uid, gid);
 
-  return -EACCES;
+  mDir = new radosfs::RadosFsDir(mRadosFs, path);
+
+  if (!mDir->exists())
+    return -ENOENT;
+
+  if (!mDir->isReadable())
+    return -EACCES;
+
+  mDir->update();
+
+  return XrdOssOK;
 }
 
 int
@@ -69,7 +71,12 @@ RadosOssDir::Close(long long *retsz)
 int
 RadosOssDir::Readdir(char *buff, int blen)
 {
-  const std::string &entry = mDirInfo->getEntry(mNextEntry++);
+  std::string entry;
+
+  int ret = mDir->entry(mNextEntry++, entry);
+
+  if (ret != 0)
+    return ret;
 
   if (entry != "")
     strlcpy(buff, entry.c_str(), entry.length());

@@ -22,26 +22,22 @@
 #define __RADOS_OSS_DIR_HH__
 
 #include <xrootd/XrdOss/XrdOss.hh>
-#include <rados/librados.h>
-
-#include "RadosOss.hh"
-#include "DirInfo.hh"
+#include <xrootd/XrdSys/XrdSysError.hh>
+#include <radosfs/RadosFs.hh>
+#include <radosfs/RadosFsDir.hh>
 
 class RadosOssDir : public XrdOssDF
 {
 public:
-  RadosOssDir(RadosOss *cephOss, const XrdSysError &eroute);
+  RadosOssDir(radosfs::RadosFs *radosFs, const XrdSysError &eroute);
   virtual ~RadosOssDir();
   virtual int Opendir(const char *, XrdOucEnv &);
   virtual int Readdir(char *buff, int blen);
   virtual int Close(long long *retsz=0);
 
 private:
-  int readContents(void);
-
-  rados_ioctx_t mIoctx;
-  RadosOss *mCephOss;
-  DirInfo *mDirInfo;
+  radosfs::RadosFs *mRadosFs;
+  radosfs::RadosFsDir *mDir;
   int mNextEntry;
 };
 
