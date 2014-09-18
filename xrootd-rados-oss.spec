@@ -27,7 +27,7 @@ XRootD OSS plugin for RADOS pools (CEPH)
 %build
 test -e $RPM_BUILD_ROOT && rm -r $RPM_BUILD_ROOT
 %if 0%{?rhel} < 6
-export CC=/usr/bin/gcc44 CXX=/usr/bin/g++44 
+export CC=/usr/bin/gcc44 CXX=/usr/bin/g++44
 %endif
 
 mkdir -p build
