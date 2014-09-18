@@ -78,10 +78,15 @@ RadosOssDir::Readdir(char *buff, int blen)
   if (ret != 0)
     return ret;
 
+  if (blen <= entry.length())
+    return -ENAMETOOLONG;
+
+  ret = 0;
+
   if (entry != "")
-    strlcpy(buff, entry.c_str(), entry.length());
-  else
-    *buff = '\0';
+    ret = strlcpy(buff, entry.c_str(), entry.length() + 1);
+
+  buff[ret] = '\0';
 
   return XrdOssOK;
 }
