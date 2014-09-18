@@ -26,13 +26,15 @@
 #include <stdio.h>
 #include <vector>
 #include <string>
-#include <map>
+#include <vector>
 
 #include <libradosfs.hh>
 
 typedef struct {
   std::string name;
+  std::string prefix;
   int size;
+  bool isMtdPool;
 } RadosOssPool;
 
 class RadosOss : public XrdOss
@@ -67,14 +69,14 @@ private:
   int loadInfoFromConfig(const char *pluginConf,
                          std::string &configPath,
                          std::string &userName);
-  void addPoolFromConfStr(const char *confStr);
+  void addPoolFromConfStr(const char *confStr, bool isMtdPool);
   void initIoctxInPools(void);
   std::string getDefaultPoolName(void) const;
   void setIdsFromEnv(XrdOucEnv *env);
 
   radosfs::RadosFs mRadosFs;
 
-  std::map<std::string, RadosOssPool> mPoolMap;
+  std::vector<RadosOssPool> mPools;
 };
 
 #endif /* __RADOS_OSS_HH__ */

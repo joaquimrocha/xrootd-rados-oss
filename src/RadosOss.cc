@@ -77,13 +77,38 @@ RadosOss::Init(XrdSysLogger *logger, const char *configFn)
 
   mRadosFs.init(userName, configPath);
 
-  std::map<std::string, RadosOssPool>::iterator it = mPoolMap.begin();
+  std::vector<RadosOssPool>::iterator it = mPools.begin();
 
-  while (it != mPoolMap.end())
+  while (it != mPools.end())
   {
-    const std::string &key = (*it).first;
-    RadosOssPool &pool = (*it).second;
-    mRadosFs.addPool(pool.name, key, pool.size);
+    int ret;
+    const RadosOssPool &pool = *it;
+
+    if (pool.isMtdPool)
+    {
+      OssEroute.Say(LOG_PREFIX "Adding metadata pool ", pool.name.c_str(),
+                    "...");
+      ret = mRadosFs.addMetadataPool(pool.name, pool.prefix);
+
+      if (ret != 0)
+      {
+        OssEroute.Emsg("Failed to add metadata pool", pool.name.c_str(), ":",
+                       strerror(abs(ret)));
+      }
+    }
+    else
+    {
+      OssEroute.Say(LOG_PREFIX "Adding data pool ", pool.name.c_str(),
+                    "...");
+
+      ret = mRadosFs.addDataPool(pool.name, pool.prefix, pool.size);
+
+      if (ret != 0)
+      {
+        OssEroute.Emsg("Failed to add data pool", pool.name.c_str(), ":",
+                       strerror(abs(ret)));
+      }
+    }
 
     it++;
   }
@@ -128,11 +153,17 @@ RadosOss::loadInfoFromConfig(const char *pluginConf,
     {
       userName = Config.GetWord();
     }
-    else if (strcmp(var, RADOS_CONFIG_POOLS_KW) == 0)
+    else if (strcmp(var, RADOS_CONFIG_DATA_POOLS) == 0)
     {
       const char *pool;
       while (pool = Config.GetWord())
-        addPoolFromConfStr(pool);
+        addPoolFromConfStr(pool, false);
+    }
+    else if (strcmp(var, RADOS_CONFIG_MTD_POOLS) == 0)
+    {
+      const char *pool;
+      while (pool = Config.GetWord())
+        addPoolFromConfStr(pool, true);
     }
   }
 
@@ -142,7 +173,7 @@ RadosOss::loadInfoFromConfig(const char *pluginConf,
 }
 
 void
-RadosOss::addPoolFromConfStr(const char *confStr)
+RadosOss::addPoolFromConfStr(const char *confStr, bool isMtdPool)
 {
   int delimeterIndex;
   XrdOucString str(confStr);
@@ -156,7 +187,7 @@ RadosOss::addPoolFromConfStr(const char *confStr)
     return;
   }
 
-  RadosOssPool pool = {"", DEFAULT_POOL_FILE_SIZE};
+  RadosOssPool pool;
   XrdOucString poolPrefix(str, 0, delimeterIndex - 1);
   XrdOucString poolName(str, delimeterIndex + 1);
 
@@ -176,18 +207,19 @@ RadosOss::addPoolFromConfStr(const char *confStr)
       pool.size = DEFAULT_POOL_FILE_SIZE;
   }
 
+  pool.isMtdPool = isMtdPool;
   pool.name = poolName.c_str();
+  pool.prefix = poolPrefix.c_str();
 
-  OssEroute.Say(LOG_PREFIX "Found pool with name ", poolName.c_str(),
+  OssEroute.Say(LOG_PREFIX "Found ", (isMtdPool ? "metadata " : "data "),
+                "pool with name ", poolName.c_str(),
                 " for prefix ", poolPrefix.c_str());
 
   if (poolSize != "")
     OssEroute.Say(LOG_PREFIX "... and size configured to ", poolSize.c_str(),
                   " MB");
 
-  mPoolMap[poolPrefix.c_str()] = pool;
-  // We keep a set to quickly look for the prefix though
-  // in the future we could implement a trie for improved efficiency
+  mPools.push_back(pool);
 }
 
 void
@@ -341,7 +373,7 @@ RadosOss::Create(const char *tident, const char *path, mode_t access_mode,
   ret = file.create(access_mode);
 
   if (ret != 0)
-    OssEroute.Emsg("Failed to truncate file %s: %s", path, strerror(-ret));
+    OssEroute.Emsg("Failed to create file %s: %s", path, strerror(-ret));
 
   return ret;
 }
