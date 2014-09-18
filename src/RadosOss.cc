@@ -188,7 +188,6 @@ RadosOss::addPoolFromConfStr(const char *confStr)
   mPoolMap[poolPrefix.c_str()] = pool;
   // We keep a set to quickly look for the prefix though
   // in the future we could implement a trie for improved efficiency
-  mPoolPrefixSet.insert(poolPrefix.c_str());
 }
 
 void

@@ -27,7 +27,6 @@
 #include <vector>
 #include <string>
 #include <map>
-#include <set>
 
 #include <libradosfs.hh>
 
@@ -76,7 +75,6 @@ private:
   radosfs::RadosFs mRadosFs;
 
   std::map<std::string, RadosOssPool> mPoolMap;
-  std::set<std::string> mPoolPrefixSet;
 };
 
 #endif /* __RADOS_OSS_HH__ */
