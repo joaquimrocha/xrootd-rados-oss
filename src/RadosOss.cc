@@ -391,5 +391,20 @@ RadosOss::StatFS(const char *path, char *buff, int &blen, XrdOucEnv *eP)
   return XrdOssOK;
 }
 
+int
+RadosOss::Chmod(const char *path, mode_t mode, XrdOucEnv *env)
+{
+  setIdsFromEnv(env);
+
+  radosfs::RadosFsInfo *fsInfo = mRadosFs.getFsInfo(path);
+
+  if (!fsInfo)
+  {
+    OssEroute.Emsg("Failed to chmod %s. Path does not exist.", path);
+    return -ENOENT;
+  }
+
+  return fsInfo->chmod((long int) mode);
+}
 
 XrdVERSIONINFO(XrdOssGetStorageSystem, RadosOss);

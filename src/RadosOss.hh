@@ -43,8 +43,7 @@ public:
   virtual XrdOssDF *newDir(const char *tident);
   virtual XrdOssDF *newFile(const char *tident);
 
-  virtual int     Chmod(const char *, mode_t mode, XrdOucEnv *eP=0)
-                        { return -ENOTSUP; }
+  virtual int     Chmod(const char *, mode_t mode, XrdOucEnv *eP=0);
   virtual int     Create(const char *, const char *, mode_t, XrdOucEnv &,
                          int opts=0);
   virtual int     Init(XrdSysLogger *, const char *);
