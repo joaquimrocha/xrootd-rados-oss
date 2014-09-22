@@ -51,8 +51,7 @@ public:
                         XrdOucEnv *eP=0);
   virtual int     Remdir(const char *, int Opts=0, XrdOucEnv *eP=0);
   virtual int     Rename(const char *, const char *,
-                         XrdOucEnv *eP1=0, XrdOucEnv *eP2=0)
-                         { return -ENOTSUP; }
+                         XrdOucEnv *eP1=0, XrdOucEnv *eP2=0);
   virtual int     Stat(const char *, struct stat *, int opts=0, XrdOucEnv *eP=0);
   virtual int     StatFS(const char *path, char *buff, int &blen, XrdOucEnv *eP=0);
   virtual int     Truncate(const char *, unsigned long long, XrdOucEnv *eP=0);

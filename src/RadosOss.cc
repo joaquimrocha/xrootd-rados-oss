@@ -407,4 +407,21 @@ RadosOss::Chmod(const char *path, mode_t mode, XrdOucEnv *env)
   return fsInfo->chmod((long int) mode);
 }
 
+int
+RadosOss::Rename(const char *path, const char *newPath,
+                 XrdOucEnv *env, XrdOucEnv *env2)
+{
+  setIdsFromEnv(env);
+
+  radosfs::RadosFsInfo *fsInfo = mRadosFs.getFsInfo(path);
+
+  if (!fsInfo)
+  {
+    OssEroute.Emsg("Failed to rename %s. Path does not exist.", path);
+    return -ENOENT;
+  }
+
+  return fsInfo->rename(newPath);
+}
+
 XrdVERSIONINFO(XrdOssGetStorageSystem, RadosOss);
