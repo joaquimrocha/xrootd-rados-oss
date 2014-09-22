@@ -60,13 +60,11 @@ RadosOssFile::Open(const char *path, int flags, mode_t mode, XrdOucEnv &env)
 {
   int ret = 0;
   mObjectName = strdup(path);
-  radosfs::RadosFsFile::OpenMode openMode = radosfs::RadosFsFile::MODE_NONE;
+  radosfs::RadosFsFile::OpenMode openMode = radosfs::RadosFsFile::MODE_READ;
 
   if (flags & O_RDWR)
     openMode = (radosfs::RadosFsFile::OpenMode)
         (radosfs::RadosFsFile::MODE_WRITE | radosfs::RadosFsFile::MODE_READ);
-  else if (flags & O_RDONLY)
-    openMode = (radosfs::RadosFsFile::OpenMode) radosfs::RadosFsFile::MODE_READ;
   else if (flags & O_WRONLY)
     openMode = (radosfs::RadosFsFile::OpenMode) radosfs::RadosFsFile::MODE_WRITE;
 
