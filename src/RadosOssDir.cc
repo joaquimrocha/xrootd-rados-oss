@@ -54,6 +54,9 @@ RadosOssDir::Opendir(const char *path, XrdOucEnv &env)
   if (!mDir->exists())
     return -ENOENT;
 
+  if (mDir->isFile())
+    return -ENOTDIR;
+
   if (!mDir->isReadable())
     return -EACCES;
 
