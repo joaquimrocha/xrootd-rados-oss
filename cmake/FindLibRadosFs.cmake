@@ -1,4 +1,4 @@
-FIND_PATH(RADOS_FS_INCLUDE_DIR radosfs.hh
+FIND_PATH(RADOS_FS_INCLUDE_DIR libradosfs.hh
   HINTS
   $ENV{XROOTD_DIR}
   /usr
