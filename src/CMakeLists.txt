@@ -1,5 +1,4 @@
 find_package( XRootD REQUIRED )
-find_package( LibRados REQUIRED )
 find_package( LibRadosFs REQUIRED )
 
 add_library( RadosOss SHARED
@@ -9,11 +8,11 @@ add_library( RadosOss SHARED
              RadosOssDefines.hh
 )
 
-include_directories( ${XROOTD_INCLUDE_DIR} ${RADOS_INCLUDE_DIR} )
+include_directories( ${XROOTD_INCLUDE_DIR} ${RADOS_FS_INCLUDE_DIR} )
 
 add_definitions( -D_LARGEFILE_SOURCE -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64 )
 
-target_link_libraries( RadosOss ${RADOS_LIB} ${RADOS_FS_LIB} )
+target_link_libraries( RadosOss ${RADOS_FS_LIB} )
 
 if( Linux )
   set_target_properties( RadosOss PROPERTIES
