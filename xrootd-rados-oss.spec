@@ -11,11 +11,11 @@ Source:        %{name}-%{version}-%{release}.tar.gz
 BuildRoot:     %{_tmppath}/%{name}-root
 
 BuildRequires: cmake >= 2.6
-BuildRequires: ceph-libs ceph-devel
-BuildRequires: xrootd-server-devel >= 3.3.0
-BuildRequires: xrootd-private-devel >= 3.3.0
+BuildRequires: radosfs-devel >= 0.4
+BuildRequires: xrootd-server-devel >= 4.0
+BuildRequires: xrootd-private-devel >= 4.0
 
-Requires:      ceph-libs
+Requires: radosfs >= 0.4 xrootd-server >= 4.0
 
 
 %description
