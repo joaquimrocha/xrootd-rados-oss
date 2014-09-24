@@ -18,7 +18,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.*
  ************************************************************************/
 
-#include <cephfs/libcephfs.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>

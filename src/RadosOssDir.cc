@@ -18,7 +18,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.*
  ************************************************************************/
 
-#include <cephfs/libcephfs.h>
 #include <cstdio>
 #include <assert.h>
 #include <fcntl.h>
