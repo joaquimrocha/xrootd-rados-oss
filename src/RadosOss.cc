@@ -76,6 +76,7 @@ RadosOss::Init(XrdSysLogger *logger, const char *configFn)
   }
 
   mRadosFs.init(userName, configPath);
+  mRadosFs.setFileLocking(false);
 
   std::vector<RadosOssPool>::iterator it = mPools.begin();
 
