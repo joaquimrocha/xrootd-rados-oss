@@ -373,7 +373,7 @@ RadosOss::Create(const char *tident, const char *path, mode_t access_mode,
   ret = file.create(access_mode);
 
   if (ret != 0)
-    OssEroute.Emsg("Failed to create file %s: %s", path, strerror(-ret));
+    OssEroute.Emsg("Failed to create file ", path, ":", strerror(-ret));
 
   return ret;
 }
