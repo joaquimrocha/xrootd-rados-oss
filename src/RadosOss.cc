@@ -369,6 +369,21 @@ RadosOss::Create(const char *tident, const char *path, mode_t access_mode,
 
   setIdsFromEnv(&env);
 
+  if (Opts & XRDOSS_mkpath)
+  {
+    std::string dirPath = radosfs::RadosFsDir::getParent(path, 0);
+    radosfs::RadosFsDir dir(&mRadosFs, dirPath);
+
+    ret = dir.create(-1, true);
+
+    if (ret != 0 && ret != -EEXIST)
+    {
+      OssEroute.Emsg("Failed to create parent dirs for file", path, ":",
+                     strerror(abs(ret)));
+      return ret;
+    }
+  }
+
   radosfs::RadosFsFile file(&mRadosFs, path, radosfs::RadosFsFile::MODE_WRITE);
   ret = file.create(access_mode);
 
