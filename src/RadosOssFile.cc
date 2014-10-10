@@ -69,6 +69,9 @@ RadosOssFile::Open(const char *path, int flags, mode_t mode, XrdOucEnv &env)
 
   mFile = new radosfs::RadosFsFile(mRadosFs, path, openMode);
 
+  if (flags & O_CREAT)
+    ret = mFile->create();
+
   if (flags & O_TRUNC)
     ret = mFile->truncate(0);
 
