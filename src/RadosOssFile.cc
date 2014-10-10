@@ -102,5 +102,12 @@ RadosOssFile::Fstat(struct stat *buff)
 ssize_t
 RadosOssFile::Write(const void *buff, off_t offset, size_t blen)
 {
-  return mFile->write((char *) buff, offset, blen);
+  int ret = mFile->write((char *) buff, offset, blen);
+
+  // The libradosfs file write returns 0 if it succeeds but the XRootD OSS Write
+  // needs to return the number of bytes instead
+  if (ret == 0)
+    ret = blen;
+
+  return ret;
 }
