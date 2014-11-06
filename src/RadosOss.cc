@@ -20,6 +20,7 @@
 
 #include <fcntl.h>
 #include <unistd.h>
+#include <stdlib.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sstream>
@@ -164,6 +165,20 @@ RadosOss::loadInfoFromConfig(const char *pluginConf,
       const char *pool;
       while (pool = Config.GetWord())
         addPoolFromConfStr(pool, true);
+    }
+    else if (strcmp(var, RADOS_CONFIG_DEFAULT_STRIPESIZE) == 0)
+    {
+      char* sstripe = Config.GetWord();
+      if ( sstripe ) {
+	size_t stripe = (size_t) strtoull(sstripe,0,10);
+	if (!stripe) {
+	  fprintf(stderr,"error: illegal default stripesize configured %s='%s'\n", RADOS_CONFIG_DEFAULT_STRIPESIZE, sstripe);
+	  Config.Close();
+	  return -1;
+	} 
+	mRadosFs.setFileStripeSize(stripe);
+	OssEroute.Say(LOG_PREFIX "Set default stripesize ", sstripe);
+      }
     }
   }
 
@@ -385,7 +400,7 @@ RadosOss::Create(const char *tident, const char *path, mode_t access_mode,
   }
 
   radosfs::RadosFsFile file(&mRadosFs, path, radosfs::RadosFsFile::MODE_WRITE);
-  ret = file.create(access_mode);
+  ret = file.create(access_mode, std::string(""), env.Get("rfs.stripe") ? atoi(env.Get("rfs.stripe")) : 0);
 
   if (ret != 0)
     OssEroute.Emsg("Failed to create file ", path, ":", strerror(-ret));

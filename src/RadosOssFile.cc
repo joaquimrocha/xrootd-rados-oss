@@ -70,7 +70,7 @@ RadosOssFile::Open(const char *path, int flags, mode_t mode, XrdOucEnv &env)
   mFile = new radosfs::RadosFsFile(mRadosFs, path, openMode);
 
   if (flags & O_CREAT)
-    ret = mFile->create();
+    ret = mFile->create(-1, std::string(""), env.Get("rfs.stripe") ? atoi(env.Get("rfs.stripe")) : 0 );
 
   if (flags & O_TRUNC)
     ret = mFile->truncate(0);
