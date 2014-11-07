@@ -20,7 +20,7 @@
 #-------------------------------------------------------------------------------
 set( VERSION_MAJOR "0" )
 set( VERSION_MINOR "1" )
-set( VERSION_PATCH "0")
+set( VERSION_PATCH "1")
 
 cmake_minimum_required( VERSION 2.6 )
 project( xrootd-rados-oss )
