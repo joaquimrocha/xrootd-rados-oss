@@ -27,7 +27,7 @@
 #include "RadosOssDir.hh"
 #include "RadosOssDefines.hh"
 
-RadosOssDir::RadosOssDir(radosfs::RadosFs *radosFs,
+RadosOssDir::RadosOssDir(radosfs::Filesystem *radosFs,
                          const XrdSysError &eroute)
   : mRadosFs(radosFs),
     mDir(0),
@@ -48,7 +48,7 @@ RadosOssDir::Opendir(const char *path, XrdOucEnv &env)
 
   mRadosFs->setIds(uid, gid);
 
-  mDir = new radosfs::RadosFsDir(mRadosFs, path);
+  mDir = new radosfs::Dir(mRadosFs, path);
 
   if (!mDir->exists())
     return -ENOENT;

@@ -25,12 +25,13 @@
 #include <XrdOuc/XrdOucEnv.hh>
 #include <stdio.h>
 #include <string>
-#include <radosfs/RadosFsFile.hh>
+#include <radosfs/File.hh>
 
 #include "RadosOssFile.hh"
 #include "RadosOssDefines.hh"
 
-RadosOssFile::RadosOssFile(radosfs::RadosFs *radosFs, const XrdSysError &eroute)
+RadosOssFile::RadosOssFile(radosfs::Filesystem *radosFs,
+                           const XrdSysError &eroute)
   : mRadosFs(radosFs),
     mFile(0),
     mObjectName(0),
@@ -59,15 +60,15 @@ RadosOssFile::Open(const char *path, int flags, mode_t mode, XrdOucEnv &env)
 {
   int ret = 0;
   mObjectName = strdup(path);
-  radosfs::RadosFsFile::OpenMode openMode = radosfs::RadosFsFile::MODE_READ;
+  radosfs::File::OpenMode openMode = radosfs::File::MODE_READ;
 
   if (flags & O_RDWR)
-    openMode = (radosfs::RadosFsFile::OpenMode)
-        (radosfs::RadosFsFile::MODE_WRITE | radosfs::RadosFsFile::MODE_READ);
+    openMode = (radosfs::File::OpenMode)
+        (radosfs::File::MODE_WRITE | radosfs::File::MODE_READ);
   else if (flags & O_WRONLY)
-    openMode = (radosfs::RadosFsFile::OpenMode) radosfs::RadosFsFile::MODE_WRITE;
+    openMode = (radosfs::File::OpenMode) radosfs::File::MODE_WRITE;
 
-  mFile = new radosfs::RadosFsFile(mRadosFs, path, openMode);
+  mFile = new radosfs::File(mRadosFs, path, openMode);
 
   if (flags & O_CREAT)
     ret = mFile->create(-1, std::string(""), env.Get("rfs.stripe") ? atoi(env.Get("rfs.stripe")) : 0 );

@@ -23,21 +23,21 @@
 
 #include <xrootd/XrdOss/XrdOss.hh>
 #include <xrootd/XrdSys/XrdSysError.hh>
-#include <radosfs/RadosFs.hh>
-#include <radosfs/RadosFsDir.hh>
+#include <radosfs/Filesystem.hh>
+#include <radosfs/Dir.hh>
 
 class RadosOssDir : public XrdOssDF
 {
 public:
-  RadosOssDir(radosfs::RadosFs *radosFs, const XrdSysError &eroute);
+  RadosOssDir(radosfs::Filesystem *radosFs, const XrdSysError &eroute);
   virtual ~RadosOssDir();
   virtual int Opendir(const char *, XrdOucEnv &);
   virtual int Readdir(char *buff, int blen);
   virtual int Close(long long *retsz=0);
 
 private:
-  radosfs::RadosFs *mRadosFs;
-  radosfs::RadosFsDir *mDir;
+  radosfs::Filesystem *mRadosFs;
+  radosfs::Dir *mDir;
   int mNextEntry;
 };
 

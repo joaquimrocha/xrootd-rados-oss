@@ -288,7 +288,7 @@ RadosOss::Mkdir(const char *path, mode_t mode, int mkpath, XrdOucEnv *env)
     }
   }
 
-  radosfs::RadosFsDir dir(&mRadosFs, path);
+  radosfs::Dir dir(&mRadosFs, path);
   ret = dir.create(mode, mkpath, owner, group);
 
   if (ret != 0)
@@ -307,7 +307,7 @@ RadosOss::Remdir(const char *path, int Opts, XrdOucEnv *env)
 
   setIdsFromEnv(env);
 
-  radosfs::RadosFsDir dir(&mRadosFs, path);
+  radosfs::Dir dir(&mRadosFs, path);
   ret = dir.remove();
 
   if (ret != 0)
@@ -323,7 +323,7 @@ RadosOss::Unlink(const char *path, int Opts, XrdOucEnv *env)
 
   setIdsFromEnv(env);
 
-  radosfs::RadosFsFile file(&mRadosFs, path, radosfs::RadosFsFile::MODE_WRITE);
+  radosfs::File file(&mRadosFs, path, radosfs::File::MODE_WRITE);
   ret = file.remove();
 
   if (ret != 0)
@@ -341,7 +341,7 @@ RadosOss::Truncate(const char* path,
 
   setIdsFromEnv(env);
 
-  radosfs::RadosFsFile file(&mRadosFs, path, radosfs::RadosFsFile::MODE_WRITE);
+  radosfs::File file(&mRadosFs, path, radosfs::File::MODE_WRITE);
   ret = file.truncate(size);
 
   if (ret != 0)
@@ -386,8 +386,8 @@ RadosOss::Create(const char *tident, const char *path, mode_t access_mode,
 
   if (Opts & XRDOSS_mkpath)
   {
-    std::string dirPath = radosfs::RadosFsDir::getParent(path, 0);
-    radosfs::RadosFsDir dir(&mRadosFs, dirPath);
+    std::string dirPath = radosfs::Dir::getParent(path, 0);
+    radosfs::Dir dir(&mRadosFs, dirPath);
 
     ret = dir.create(-1, true);
 
@@ -399,7 +399,7 @@ RadosOss::Create(const char *tident, const char *path, mode_t access_mode,
     }
   }
 
-  radosfs::RadosFsFile file(&mRadosFs, path, radosfs::RadosFsFile::MODE_WRITE);
+  radosfs::File file(&mRadosFs, path, radosfs::File::MODE_WRITE);
   ret = file.create(access_mode, std::string(""), env.Get("rfs.stripe") ? atoi(env.Get("rfs.stripe")) : 0);
 
   if (ret != 0)
@@ -426,15 +426,15 @@ RadosOss::Chmod(const char *path, mode_t mode, XrdOucEnv *env)
 {
   setIdsFromEnv(env);
 
-  radosfs::RadosFsInfo *fsInfo = mRadosFs.getFsInfo(path);
+  radosfs::FsObj *fsObj = mRadosFs.getFsObj(path);
 
-  if (!fsInfo)
+  if (!fsObj)
   {
     OssEroute.Emsg("Failed to chmod %s. Path does not exist.", path);
     return -ENOENT;
   }
 
-  return fsInfo->chmod((long int) mode);
+  return fsObj->chmod((long int) mode);
 }
 
 int
@@ -443,15 +443,15 @@ RadosOss::Rename(const char *path, const char *newPath,
 {
   setIdsFromEnv(env);
 
-  radosfs::RadosFsInfo *fsInfo = mRadosFs.getFsInfo(path);
+  radosfs::FsObj *fsObj = mRadosFs.getFsObj(path);
 
-  if (!fsInfo)
+  if (!fsObj)
   {
     OssEroute.Emsg("Failed to rename %s. Path does not exist.", path);
     return -ENOENT;
   }
 
-  return fsInfo->rename(newPath);
+  return fsObj->rename(newPath);
 }
 
 XrdVERSIONINFO(XrdOssGetStorageSystem, RadosOss);

@@ -72,7 +72,7 @@ private:
   std::string getDefaultPoolName(void) const;
   void setIdsFromEnv(XrdOucEnv *env);
 
-  radosfs::RadosFs mRadosFs;
+  radosfs::Filesystem mRadosFs;
 
   std::vector<RadosOssPool> mPools;
 };

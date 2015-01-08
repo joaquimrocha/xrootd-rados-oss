@@ -23,15 +23,15 @@
 
 #include <xrootd/XrdOss/XrdOss.hh>
 #include <vector>
-#include <radosfs/RadosFs.hh>
-#include <radosfs/RadosFsFile.hh>
+#include <radosfs/Filesystem.hh>
+#include <radosfs/File.hh>
 
 #include "RadosOss.hh"
 
 class RadosOssFile : public XrdOssDF
 {
 public:
-  RadosOssFile(radosfs::RadosFs *radosFs, const XrdSysError &eroute);
+  RadosOssFile(radosfs::Filesystem *radosFs, const XrdSysError &eroute);
   virtual ~RadosOssFile();
   virtual int Open(const char *path, int flags, mode_t mode, XrdOucEnv &env);
   virtual int Close(long long *retsz=0);
@@ -42,8 +42,8 @@ public:
   virtual int getFD() { return fd; }
 
 private:
-  radosfs::RadosFs *mRadosFs;
-  radosfs::RadosFsFile *mFile;
+  radosfs::Filesystem *mRadosFs;
+  radosfs::File *mFile;
   char* mObjectName;
   XrdSysMutex mMutex;
   XrdSysError mEroute;
