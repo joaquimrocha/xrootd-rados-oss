@@ -76,7 +76,14 @@ RadosOss::Init(XrdSysLogger *logger, const char *configFn)
     return ret;
   }
 
-  mRadosFs.init(userName, configPath);
+  ret = mRadosFs.init(userName, configPath);
+
+  if (ret != 0)
+  {
+    OssEroute.Emsg("Problem when reading RadosFs config file",
+                   configPath.c_str(), ":", strerror(abs(ret)));
+    return ret;
+  }
 
   std::vector<RadosOssPool>::iterator it = mPools.begin();
 
