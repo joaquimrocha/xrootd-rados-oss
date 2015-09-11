@@ -59,7 +59,7 @@ RadosOssDir::Opendir(const char *path, XrdOucEnv &env)
   if (!mDir->isReadable())
     return -EACCES;
 
-  mDir->update();
+  mDir->refresh();
 
   return XrdOssOK;
 }

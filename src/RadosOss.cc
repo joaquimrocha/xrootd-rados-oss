@@ -183,7 +183,7 @@ RadosOss::loadInfoFromConfig(const char *pluginConf,
 	  Config.Close();
 	  return -1;
 	} 
-	mRadosFs.setFileStripeSize(stripe);
+	mRadosFs.setFileChunkSize(stripe);
 	OssEroute.Say(LOG_PREFIX "Set default stripesize ", sstripe);
       }
     }
