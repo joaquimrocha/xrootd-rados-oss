@@ -30,8 +30,7 @@
 RadosOssDir::RadosOssDir(radosfs::Filesystem *radosFs,
                          const XrdSysError &eroute)
   : mRadosFs(radosFs),
-    mDir(0),
-    mNextEntry(0)
+    mDir(0)
 {
 }
 
@@ -73,17 +72,27 @@ RadosOssDir::Close(long long *retsz)
 int
 RadosOssDir::Readdir(char *buff, int blen)
 {
+  int ret;
   std::string entry;
 
-  int ret = mDir->entry(mNextEntry++, entry);
+  if (mEntryList.empty())
+  {
+    ret = mDir->entryList(mEntryList);
+    mEntryListIt = mEntryList.begin();
+  }
+
+  if (ret == 0 && mEntryListIt != mEntryList.end())
+  {
+    entry = *mEntryListIt;
+    ++mEntryListIt;
+  }
+
 
   if (ret != 0)
     return ret;
 
   if (blen <= entry.length())
     return -ENAMETOOLONG;
-
-  ret = 0;
 
   if (entry != "")
     ret = strlcpy(buff, entry.c_str(), entry.length() + 1);

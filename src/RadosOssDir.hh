@@ -38,7 +38,8 @@ public:
 private:
   radosfs::Filesystem *mRadosFs;
   radosfs::Dir *mDir;
-  int mNextEntry;
+  std::set<std::string> mEntryList;
+  std::set<std::string>::const_iterator mEntryListIt;
 };
 
 #endif /* __RADOS_OSS_DIR_HH__ */
