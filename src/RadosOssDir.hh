@@ -34,12 +34,18 @@ public:
   virtual int Opendir(const char *, XrdOucEnv &);
   virtual int Readdir(char *buff, int blen);
   virtual int Close(long long *retsz=0);
+  virtual int StatRet(struct stat *buff);
 
 private:
+  inline bool shouldStat() const { return mStatRet != 0; }
+  int statAllEntries();
+
   radosfs::Filesystem *mRadosFs;
   radosfs::Dir *mDir;
+  struct stat *mStatRet;
   std::set<std::string> mEntryList;
   std::set<std::string>::const_iterator mEntryListIt;
+  std::map<std::string, std::pair<int, struct stat> > mEntriesStatInfo;
 };
 
 #endif /* __RADOS_OSS_DIR_HH__ */

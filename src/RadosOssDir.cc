@@ -30,7 +30,8 @@
 RadosOssDir::RadosOssDir(radosfs::Filesystem *radosFs,
                          const XrdSysError &eroute)
   : mRadosFs(radosFs),
-    mDir(0)
+    mDir(0),
+    mStatRet(0)
 {
 }
 
@@ -87,6 +88,28 @@ RadosOssDir::Readdir(char *buff, int blen)
     ++mEntryListIt;
   }
 
+  if (shouldStat())
+  {
+    if (mEntriesStatInfo.empty())
+      ret = statAllEntries();
+
+    if (ret != 0)
+      return ret;
+
+
+    std::map<std::string, std::pair<int, struct stat> >::const_iterator it;
+    if ((it = mEntriesStatInfo.find(entry)) == mEntriesStatInfo.end())
+      return -ENOENT;
+
+    std::pair<int, struct stat> entryStat = (*it).second;
+
+    if (entryStat.first != 0)
+      return entryStat.first;
+
+    *mStatRet = entryStat.second;
+
+    ret = 0;
+  }
 
   if (ret != 0)
     return ret;
@@ -100,4 +123,42 @@ RadosOssDir::Readdir(char *buff, int blen)
   buff[ret] = '\0';
 
   return XrdOssOK;
+}
+
+int
+RadosOssDir::StatRet(struct stat *buff)
+{
+  mStatRet = buff;
+  return 0;
+}
+
+int
+RadosOssDir::statAllEntries()
+{
+  int ret = 0;
+
+  if (mEntryList.empty())
+    ret = mDir->entryList(mEntryList);
+
+  if (ret != 0)
+    return ret;
+
+  std::vector<std::string> entries;
+  entries.reserve(mEntryList.size());
+
+  std::set<std::string>::const_iterator it;
+  for (it = mEntryList.begin(); it != mEntryList.end(); ++it)
+    entries.push_back(mDir->path() + *it);
+
+  std::vector<std::pair<int, struct stat> > statInfo;
+  statInfo = mRadosFs->stat(entries);
+
+  size_t i = 0;
+  std::set<std::string>::const_iterator sit;
+  for (sit = mEntryList.begin(); sit != mEntryList.end(); ++sit, ++i)
+  {
+    mEntriesStatInfo[*sit] = statInfo[i];
+  }
+
+  return ret;
 }
