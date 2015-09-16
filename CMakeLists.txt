@@ -1,6 +1,6 @@
 # ************************************************************************
 # * Rados CMS Plugin for XRootD                                          *
-# * Copyright © 2014 CERN/Switzerland                                    *
+# * Copyright © 2013-2015 CERN/Switzerland                                    *
 # *                                                                      *
 # * Author: Joaquim Rocha <joaquim.rocha@cern.ch>                        *
 # *                                                                      *

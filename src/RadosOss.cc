@@ -1,6 +1,6 @@
 /************************************************************************
  * Rados OSS Plugin for XRootD                                          *
- * Copyright © 2013 CERN/Switzerland                                    *
+ * Copyright © 2013-2015 CERN/Switzerland                                    *
  *                                                                      *
  * Author: Joaquim Rocha <joaquim.rocha@cern.ch>                        *
  *                                                                      *
